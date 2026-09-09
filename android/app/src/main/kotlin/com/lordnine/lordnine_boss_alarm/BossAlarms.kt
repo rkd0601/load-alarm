@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.net.Uri
 import org.json.JSONArray
 import org.json.JSONObject
 import java.text.SimpleDateFormat
@@ -20,6 +21,7 @@ import java.util.UUID
 
 object BossAlarms {
     const val CHANNEL = "boss_spawn"
+    const val CUT_ACTION = "com.lordnine.lordnine_boss_alarm.CUT"
     private const val LEAD = 300000L
     fun preferences(context: Context) = context.getSharedPreferences("boss_alarm", Context.MODE_PRIVATE)
     private fun manager(context: Context) = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
@@ -97,7 +99,7 @@ object BossAlarms {
             if (!boss.optBoolean("enabled")) continue
             val spawn = nextSpawn(boss, now + LEAD) ?: continue
             events.add(JSONObject().put("id", boss.getInt("id"))
-                .put("name", boss.getString("name")).put("spawnMs", spawn).put("fireMs", spawn - LEAD))
+                .put("name", boss.getString("name")).put("canCut", boss.getJSONArray("weekdays").length() == 0).put("spawnMs", spawn).put("fireMs", spawn - LEAD))
         }
         val alarmManager = manager(context)
         alarmManager.cancel(pending(context))
@@ -114,6 +116,42 @@ object BossAlarms {
         } else {
             alarmManager.setExact(AlarmManager.RTC_WAKEUP, first, pending(context, token))
         }
+    }
+
+    @Synchronized fun queueCut(context: Context, intent: Intent): Boolean {
+        if (intent.action != CUT_ACTION) return false
+        val id = intent.getIntExtra("cutId", -1)
+        val token = intent.getStringExtra("cutToken") ?: return false
+        val prefs = preferences(context)
+        // Only accept a token issued by this app's immutable notification action.
+        if (token != prefs.getString("cut_token_$id", null)) return false
+        val cuts = JSONArray(prefs.getString("pending_cuts", "[]"))
+        cuts.put(JSONObject().put("id", id).put("token", token)
+            .put("atMs", System.currentTimeMillis()))
+        check(prefs.edit().putString("pending_cuts", cuts.toString())
+            .remove("cut_token_$id").commit())
+        notifications(context).cancel(id)
+        intent.removeExtra("cutToken")
+        return true
+    }
+
+    @Synchronized fun pendingCuts(context: Context): List<Map<String, Any>> {
+        val cuts = JSONArray(preferences(context).getString("pending_cuts", "[]"))
+        return (0 until cuts.length()).map {
+            val cut = cuts.getJSONObject(it)
+            mapOf("id" to cut.getInt("id"), "token" to cut.getString("token"), "atMs" to cut.getLong("atMs"))
+        }
+    }
+
+    @Synchronized fun acknowledgeCuts(context: Context, tokens: List<String>) {
+        val prefs = preferences(context)
+        val cuts = JSONArray(prefs.getString("pending_cuts", "[]"))
+        val remaining = JSONArray()
+        for (i in 0 until cuts.length()) {
+            val cut = cuts.getJSONObject(i)
+            if (cut.getString("token") !in tokens) remaining.put(cut)
+        }
+        check(prefs.edit().putString("pending_cuts", remaining.toString()).commit())
     }
 
     @Synchronized fun fire(context: Context, token: String?) {
@@ -135,6 +173,18 @@ object BossAlarms {
                     PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
                 val builder = if (Build.VERSION.SDK_INT >= 26) Notification.Builder(context, CHANNEL)
                     else Notification.Builder(context)
+                if (event.optBoolean("canCut")) {
+                    val id = event.getInt("id")
+                    val cutToken = UUID.randomUUID().toString()
+                    check(prefs.edit().putString("cut_token_$id", cutToken).commit())
+                    val cut = PendingIntent.getActivity(context, id,
+                        Intent(context, MainActivity::class.java).setAction(CUT_ACTION)
+                            .setData(Uri.parse("boss-cut://$id/$cutToken"))
+                            .putExtra("cutId", id).putExtra("cutToken", cutToken)
+                            .addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+                        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_ONE_SHOT)
+                    builder.addAction(Notification.Action.Builder(R.drawable.ic_boss_notification, "컷", cut).build())
+                }
                 val title = if (now - event.getLong("fireMs") < 60000) "${event.getString("name")} 젠 5분 전"
                     else "${event.getString("name")} 곧 젠"
                 notifications(context).notify(event.getInt("id"), builder

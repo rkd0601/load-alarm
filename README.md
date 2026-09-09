@@ -157,3 +157,11 @@ bash tools/build_ios.sh ad-hoc
 TestFlight 배포용 아카이브는 `bash tools/build_ios.sh app-store`로 빌드하며, App Store Connect 등록과 업로드는 별도입니다. 이 스크립트는 업로드하지 않습니다. 프로젝트의 Flutter 3.13.3과 설치할 Xcode 조합은 Mac에서 확인해야 합니다.
 
 공식 안내: [Flutter iOS 빌드](https://docs.flutter.dev/deployment/ios), [Apple 등록 기기 배포](https://developer.apple.com/documentation/xcode/distributing-your-app-to-registered-devices).
+
+## 알림에서 컷 처리
+
+필드 보스의 알림을 펼치면 `컷` 버튼이 표시됩니다. 누르면 앱이 열리며 버튼을 누른 시각을 처치 기준으로 저장하고, 기존 알림 ON/OFF 선택을 유지한 채 다음 알림을 예약하고 Firestore에 동기화합니다. 고정 보스에는 컷 버튼이 표시되지 않습니다. iOS에서는 알림을 길게 눌러 액션을 확인할 수 있습니다.
+
+앱 시작이 지연되거나 저장/예약이 실패해도 처치 요청은 기기에 남겨 재시도합니다. 완료된 요청과 오래된 처치 시각은 중복 적용하지 않습니다. 네트워크가 끊기면 기기 시간표와 알림을 먼저 반영하고 다음 동기화에서 DB에 전송합니다. 이 기능은 현재 앱이 생성하는 기기 로컬 알림에 적용됩니다.
+
+Android/iOS에서 앱 종료·실행 중 각각 컷을 누르고 기준 시각, 재예약, DB 반영을 확인해야 합니다. iOS 코드는 Windows에서 빌드하거나 실기기 검증하지 못했습니다.

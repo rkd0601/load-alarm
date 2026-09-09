@@ -12,6 +12,8 @@ class BossController extends ChangeNotifier {
   final AlarmPlatform platform;
   final BossCloudStore cloud;
   bool _cloudPending = false;
+  bool _refreshRequested = false;
+  List<String> _cutTokens = [];
   String? cloudError;
   String get cloudStatus => !cloud.configured
       ? 'Firebase 연결 설정 필요 · 기기에 저장 중'
@@ -52,6 +54,7 @@ class BossController extends ChangeNotifier {
           rethrow;
         }
       }
+      await _applyPendingCuts();
       await _sync();
       await _syncCloud();
     } catch (e) {
@@ -59,6 +62,7 @@ class BossController extends ChangeNotifier {
     } finally {
       loading = false;
       notifyListeners();
+      _resumeRefresh();
     }
   }
 
@@ -137,6 +141,45 @@ class BossController extends ChangeNotifier {
     }
   }
 
+  void _resumeRefresh() {
+    if (!_refreshRequested) return;
+    _refreshRequested = false;
+    Future.microtask(refresh);
+  }
+
+  Future<void> _applyPendingCuts() async {
+    final cuts = await platform.pendingCuts();
+    if (cuts.isEmpty) return;
+    final before = bosses;
+    final tokens = <String>[];
+    var changed = false;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    for (final cut in cuts) {
+      final token = cut['token'];
+      if (token is! String) continue;
+      tokens.add(token);
+      final id = cut['id'], at = cut['atMs'];
+      if (id is! int || at is! int || at <= 0 || at > now) continue;
+      bosses = bosses.map((boss) {
+        if (boss.id != id ||
+            boss.isFixed ||
+            (boss.anchorMs != null && boss.anchorMs! >= at)) return boss;
+        changed = true;
+        return boss.update(anchorMs: at);
+      }).toList();
+    }
+    if (changed) {
+      try {
+        await _save();
+      } catch (_) {
+        bosses = before;
+        rethrow;
+      }
+    }
+    // Remove native events only after both persistence and alarm scheduling succeed.
+    _cutTokens = tokens;
+  }
+
   Future<void> _sync() async {
     final now = DateTime.now().toUtc();
     final events = <Map<String, dynamic>>[];
@@ -148,6 +191,7 @@ class BossController extends ChangeNotifier {
         events.add({
           'id': boss.id,
           'name': boss.name,
+          'canCut': !boss.isFixed,
           'fireMs': alarm.millisecondsSinceEpoch,
           'spawnMs':
               alarm.add(const Duration(minutes: 5)).millisecondsSinceEpoch
@@ -162,13 +206,22 @@ class BossController extends ChangeNotifier {
     // 65th event marks the first uncovered instant, including simultaneous events.
     status = await platform.sync(events.take(64).toList(),
         events.length > 64 ? events[64]['fireMs'] as int : null);
+    if (_cutTokens.isNotEmpty) {
+      await platform.acknowledgeCuts(_cutTokens);
+      _cutTokens = [];
+    }
   }
 
   Future<void> refresh() async {
-    if (busy || loading || bosses.isEmpty) return;
+    if (busy || loading) {
+      _refreshRequested = true;
+      return;
+    }
+    if (bosses.isEmpty) return;
     busy = true;
     notifyListeners();
     try {
+      await _applyPendingCuts();
       await _sync();
       await _syncCloud();
       error = null;
@@ -177,6 +230,7 @@ class BossController extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
+      _resumeRefresh();
     }
   }
 
@@ -206,6 +260,7 @@ class BossController extends ChangeNotifier {
         bosses = before;
         rethrow;
       }
+      await _applyPendingCuts();
       await _sync();
       await _syncCloud();
     } catch (e) {
@@ -213,6 +268,7 @@ class BossController extends ChangeNotifier {
     } finally {
       busy = false;
       notifyListeners();
+      _resumeRefresh();
     }
   }
 

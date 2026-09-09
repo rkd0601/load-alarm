@@ -24,6 +24,7 @@ class _BossAlarmPageState extends State<BossAlarmPage>
     controller = widget.controller ?? BossController();
     WidgetsBinding.instance.addObserver(this);
     controller.addListener(_changed);
+    controller.platform.setCutHandler(controller.refresh);
     controller.initialize();
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (mounted) setState(() {});
@@ -44,6 +45,7 @@ class _BossAlarmPageState extends State<BossAlarmPage>
     WidgetsBinding.instance.removeObserver(this);
     timer?.cancel();
     controller.removeListener(_changed);
+    controller.platform.setCutHandler(null);
     // The controller may still be completing a platform call.
     super.dispose();
   }

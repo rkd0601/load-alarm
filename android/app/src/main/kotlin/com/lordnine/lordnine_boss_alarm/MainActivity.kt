@@ -6,20 +6,40 @@ import android.app.NotificationManager
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import android.os.Bundle
 import android.provider.Settings
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var alarmChannel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        intent?.let { BossAlarms.queueCut(this, it) }
+        super.onCreate(savedInstanceState)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (BossAlarms.queueCut(this, intent)) {
+            alarmChannel?.invokeMethod("cutPending", null)
+        }
+    }
+
     private var permissionResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "lordnine/boss_alarm")
-            .setMethodCallHandler { call, result ->
+        alarmChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "lordnine/boss_alarm")
+        alarmChannel!!.setMethodCallHandler { call, result ->
                 try {
                     when (call.method) {
+                        "pendingCuts" -> result.success(BossAlarms.pendingCuts(this))
+                        "acknowledgeCuts" -> {
+                            BossAlarms.acknowledgeCuts(this, (call.arguments as List<*>).filterIsInstance<String>())
+                            result.success(null)
+                        }
                         "load" -> result.success(BossAlarms.preferences(this).getString("document", null))
                         "save" -> {
                             val json = call.arguments as String

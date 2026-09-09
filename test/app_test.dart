@@ -12,16 +12,24 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   String? saved;
   Map<String, dynamic>? lastSync;
+  List<Map<String, dynamic>> cuts = [];
   bool failSave = false;
   bool failSync = false;
   setUp(() {
     saved = File('assets/bosses.json').readAsStringSync();
     lastSync = null;
+    cuts = [];
     failSave = false;
     failSync = false;
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(AlarmPlatform.channel, (call) async {
       switch (call.method) {
+        case 'pendingCuts':
+          return cuts;
+        case 'acknowledgeCuts':
+          final tokens = List<String>.from(call.arguments as List);
+          cuts.removeWhere((cut) => tokens.contains(cut['token']));
+          return null;
         case 'load':
           return saved;
         case 'save':
@@ -303,6 +311,100 @@ void main() {
     await controller.setAllEnabled(true);
     expect(cloud.writes, 1);
     expect(controller.bosses.every((b) => !b.enabled), isTrue);
+  });
+
+  test('알림 컷으로 앱을 시작하면 누른 시각으로 저장하고 DB와 알림을 갱신한다', () async {
+    final root = jsonDecode(saved!) as Map<String, dynamic>;
+    root['bosses'][0]['enabled'] = true;
+    saved = jsonEncode(root);
+    final at = DateTime.now().millisecondsSinceEpoch - 1000;
+    cuts.add({'id': 1, 'token': 'notification-1', 'atMs': at});
+    final cloud = FakeBossCloudStore();
+    final controller = BossController(cloud: cloud);
+    await controller.initialize();
+    expect(controller.bosses.first.anchorMs, at);
+    expect(controller.bosses.first.enabled, isTrue);
+    expect(cuts, isEmpty);
+    expect(cloud.document!['bosses'][0]['anchorMs'], at);
+    expect(lastSync!['events'][0]['fireMs'], at + 235 * 60000);
+    expect(lastSync!['events'][0]['canCut'], isTrue);
+  });
+
+  test('복귀 시 여러 컷을 반영하고 고정 보스와 오래된 컷은 무시한다', () async {
+    final controller = BossController();
+    await controller.initialize();
+    final at = DateTime.now().millisecondsSinceEpoch - 1000;
+    final fixed = controller.bosses.firstWhere((b) => b.isFixed);
+    final second = controller.bosses.where((b) => !b.isFixed).skip(1).first;
+    await controller.change(controller.bosses.first.update(anchorMs: at));
+    cuts.addAll([
+      {'id': 1, 'token': 'old', 'atMs': at - 60000},
+      {'id': second.id, 'token': 'new', 'atMs': at},
+      {'id': fixed.id, 'token': 'fixed', 'atMs': at},
+      {'id': -1, 'token': 'missing', 'atMs': at},
+      {'id': 1, 'token': 'future', 'atMs': at + 60000},
+    ]);
+    await controller.refresh();
+    expect(controller.bosses.first.anchorMs, at);
+    expect(controller.bosses.firstWhere((b) => b.id == second.id).anchorMs, at);
+    expect(controller.bosses.firstWhere((b) => b.id == second.id).enabled,
+        isFalse);
+    expect(controller.bosses.firstWhere((b) => b.id == fixed.id).anchorMs,
+        fixed.anchorMs);
+    expect(cuts, isEmpty);
+    await controller.setAllEnabled(true);
+    final fixedEvents = (lastSync!['events'] as List).where(
+        (e) => controller.bosses.firstWhere((b) => b.id == e['id']).isFixed);
+    expect(fixedEvents, isNotEmpty);
+    expect(fixedEvents.every((e) => e['canCut'] == false), isTrue);
+  });
+
+  test('컷 저장 실패 시 이벤트를 유지하고 재시도한다', () async {
+    final controller = BossController();
+    await controller.initialize();
+    final at = DateTime.now().millisecondsSinceEpoch - 1000;
+    cuts.add({'id': 1, 'token': 'retry', 'atMs': at});
+    failSave = true;
+    await controller.refresh();
+    expect(controller.bosses.first.anchorMs, isNull);
+    expect(cuts, hasLength(1));
+    expect(controller.error, isNotNull);
+    failSave = false;
+    await controller.refresh();
+    expect(controller.bosses.first.anchorMs, at);
+    expect(cuts, isEmpty);
+  });
+
+  test('컷 예약 실패 후 재처리해도 처치 시각이 밀리지 않는다', () async {
+    final controller = BossController();
+    await controller.initialize();
+    final at = DateTime.now().millisecondsSinceEpoch - 1000;
+    cuts.add({'id': 1, 'token': 'retry-alarm', 'atMs': at});
+    failSync = true;
+    await controller.refresh();
+    expect(controller.bosses.first.anchorMs, at);
+    expect(cuts, hasLength(1));
+    failSync = false;
+    final restored = BossController();
+    await restored.initialize();
+    expect(restored.bosses.first.anchorMs, at);
+    expect(cuts, isEmpty);
+  });
+
+  test('컷 DB 전송 실패에도 로컬 처치 기준은 남고 재전송된다', () async {
+    final cloud = FakeBossCloudStore();
+    final controller = BossController(cloud: cloud);
+    await controller.initialize();
+    cloud.fail = true;
+    final at = DateTime.now().millisecondsSinceEpoch - 1000;
+    cuts.add({'id': 1, 'token': 'offline-cut', 'atMs': at});
+    await controller.refresh();
+    expect(cuts, isEmpty);
+    expect(controller.bosses.first.anchorMs, at);
+    expect(controller.cloudError, isNotNull);
+    cloud.fail = false;
+    await controller.refresh();
+    expect(cloud.document!['bosses'][0]['anchorMs'], at);
   });
 
   test('손상된 저장 데이터를 기본값으로 덮어쓰지 않는다', () async {

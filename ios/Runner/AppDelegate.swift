@@ -5,6 +5,10 @@ import UserNotifications
 @UIApplicationMain
 @objc class AppDelegate: FlutterAppDelegate {
   private let center = UNUserNotificationCenter.current()
+  private var alarmChannel: FlutterMethodChannel?
+  private let cutAction = "BOSS_CUT"
+  private let cutCategory = "BOSS_FIELD"
+  private let cutsKey = "boss_pending_cuts"
 
   override func application(
     _ application: UIApplication,
@@ -12,11 +16,23 @@ import UserNotifications
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
     center.delegate = self
+    let cut = UNNotificationAction(identifier: cutAction, title: "컷", options: [.foreground])
+    center.setNotificationCategories([UNNotificationCategory(identifier: cutCategory,
+      actions: [cut], intentIdentifiers: [], options: [])])
     if let controller = window?.rootViewController as? FlutterViewController {
-      FlutterMethodChannel(name: "lordnine/boss_alarm", binaryMessenger: controller.binaryMessenger)
-        .setMethodCallHandler { [weak self] call, result in
+      alarmChannel = FlutterMethodChannel(name: "lordnine/boss_alarm", binaryMessenger: controller.binaryMessenger)
+      alarmChannel?.setMethodCallHandler { [weak self] call, result in
           guard let self = self else { return }
           switch call.method {
+          case "pendingCuts":
+            result(UserDefaults.standard.array(forKey: self.cutsKey) ?? [])
+          case "acknowledgeCuts":
+            let tokens = Set(call.arguments as? [String] ?? [])
+            let cuts = UserDefaults.standard.array(forKey: self.cutsKey) as? [[String: Any]] ?? []
+            let handled = UserDefaults.standard.stringArray(forKey: "boss_handled_cuts") ?? []
+            UserDefaults.standard.set(Array((handled + Array(tokens)).suffix(128)), forKey: "boss_handled_cuts")
+            UserDefaults.standard.set(cuts.filter { !tokens.contains($0["token"] as? String ?? "") }, forKey: self.cutsKey)
+            result(nil)
           case "load":
             result(UserDefaults.standard.string(forKey: "boss_document"))
           case "save":
@@ -80,6 +96,10 @@ import UserNotifications
       content.title = "\(name) 젠 5분 전"
       content.body = "\(formatter.string(from: Date(timeIntervalSince1970: spawn.doubleValue / 1000))) (한국 시간) 젠 예정"
       content.sound = .default
+      if event["canCut"] as? Bool == true {
+        content.categoryIdentifier = cutCategory
+        content.userInfo = ["bossId": id]
+      }
       var calendar = Calendar(identifier: .gregorian)
       calendar.timeZone = TimeZone(secondsFromGMT: 0)!
       var components = calendar.dateComponents([.year, .month, .day, .hour, .minute, .second], from: fireDate)
@@ -105,6 +125,29 @@ import UserNotifications
                   "horizonMs": horizon as Any? ?? NSNull()])
         }
       }
+    }
+  }
+
+  override func userNotificationCenter(_ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void) {
+    guard response.actionIdentifier == cutAction,
+      let id = response.notification.request.content.userInfo["bossId"] as? Int else {
+      super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+      return
+    }
+    let at = Int64(Date().timeIntervalSince1970 * 1000)
+    let token = response.notification.request.identifier
+    DispatchQueue.main.async {
+      var cuts = UserDefaults.standard.array(forKey: self.cutsKey) as? [[String: Any]] ?? []
+      let handled = UserDefaults.standard.stringArray(forKey: "boss_handled_cuts") ?? []
+      if !handled.contains(token) && !cuts.contains(where: { $0["token"] as? String == token }) {
+        cuts.append(["id": id, "token": token, "atMs": at])
+        UserDefaults.standard.set(cuts, forKey: self.cutsKey)
+      }
+      center.removeDeliveredNotifications(withIdentifiers: [token])
+      self.alarmChannel?.invokeMethod("cutPending", arguments: nil)
+      completionHandler()
     }
   }
 
