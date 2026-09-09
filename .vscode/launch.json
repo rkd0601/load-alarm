@@ -1,0 +1,23 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Boss Alarm (Firebase Android)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--dart-define-from-file=config/firebase.android.json"
+      ]
+    },
+    {
+      "name": "Boss Alarm (Firebase iOS)",
+      "request": "launch",
+      "type": "dart",
+      "program": "lib/main.dart",
+      "toolArgs": [
+        "--dart-define-from-file=config/firebase.ios.json"
+      ]
+    }
+  ]
+}

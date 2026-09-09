@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /bossAlarmUsers/{userId}/schedules/current {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && request.resource.data.keys().hasOnly(['schemaVersion', 'bosses', 'updatedAt'])
+        && request.resource.data.schemaVersion == 1
+        && request.resource.data.bosses is list
+        && request.resource.data.bosses.size() > 0
+        && request.resource.data.bosses.size() <= 100
+        && request.resource.data.updatedAt == request.time;
+    }
+  }
+}
