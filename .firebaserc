@@ -1,5 +1,7 @@
 {
   "projects": {
-    "default": "load-alarm"
+    "default": "load-alarm",
+    "dev": "load-alarm-dev",
+    "prod": "load-alarm"
   }
 }
