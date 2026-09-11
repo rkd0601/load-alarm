@@ -81,11 +81,12 @@ void main() {
       .setMockMethodCallHandler(AlarmPlatform.channel, null));
 
   test('첫 실행은 공통 DB를 읽고 서버에 기본값을 쓰지 않는다', () async {
-    cloud.document!['bosses'][0]['anchorMs'] = 123456789;
+    final at = DateTime.now().millisecondsSinceEpoch - 60000;
+    cloud.document!['bosses'][0]['anchorMs'] = at;
     final c = BossController(cloud: cloud);
     await c.initialize();
     expect(c.bosses, hasLength(45));
-    expect(c.bosses.first.anchorMs, 123456789);
+    expect(c.bosses.first.anchorMs, at);
     expect(c.bosses.every((b) => !b.enabled), isTrue);
     expect(cloud.writes, 0);
     expect((jsonDecode(saved!) as Map)['sharedVersion'], 1);
@@ -141,13 +142,14 @@ void main() {
   });
 
   test('전체 알림 설정과 해제는 처치 시간 및 DB를 변경하지 않는다', () async {
-    cloud.document!['bosses'][0]['anchorMs'] = 123456789;
+    final at = DateTime.now().millisecondsSinceEpoch - 60000;
+    cloud.document!['bosses'][0]['anchorMs'] = at;
     final c = BossController(cloud: cloud);
     await c.initialize();
     final before = jsonEncode(cloud.document), writes = cloud.writes;
     await c.setAllEnabled(true);
     expect(c.bosses.every((b) => b.enabled), isTrue);
-    expect(c.bosses.first.anchorMs, 123456789);
+    expect(c.bosses.first.anchorMs, at);
     expect(
         c.bosses
             .where((b) => !b.isFixed)
@@ -250,6 +252,17 @@ void main() {
     expect(cuts, isEmpty);
     expect(cloud.document!['bosses'][0]['anchorMs'], at);
     expect(lastSync!['events'][0]['fireMs'], at + 235 * 60000);
+  });
+
+  test('컷 미확인 5분 경과 후 출몰 시각을 자동 컷으로 공유한다', () async {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final anchor = now - 246 * 60000;
+    final spawn = anchor + 240 * 60000;
+    cloud.document!['bosses'][0]['anchorMs'] = anchor;
+    final c = BossController(cloud: cloud);
+    await c.initialize();
+    expect(c.bosses.first.anchorMs, spawn);
+    expect(cloud.document!['bosses'][0]['anchorMs'], spawn);
   });
 
   test('알림 예약 실패 후에도 처치 변경은 보존되어 재전송된다', () async {

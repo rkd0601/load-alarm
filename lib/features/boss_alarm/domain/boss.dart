@@ -105,6 +105,32 @@ class Boss {
       nextSpawn(after.add(const Duration(minutes: 5)))
           ?.subtract(const Duration(minutes: 5));
 
+  DateTime? lastSpawnAtOrBefore(DateTime time) {
+    if (isFixed || anchorMs == null) return null;
+    final period = intervalMinutes * 60000;
+    final elapsed = time.millisecondsSinceEpoch - anchorMs!;
+    if (elapsed < period) return null;
+    final count = elapsed ~/ period;
+    return DateTime.fromMillisecondsSinceEpoch(anchorMs! + count * period,
+        isUtc: true);
+  }
+
+  DateTime? unconfirmedSpawn(DateTime time) {
+    final spawn = lastSpawnAtOrBefore(time);
+    if (spawn == null) return null;
+    final elapsed = time.difference(spawn);
+    if (elapsed.isNegative || elapsed >= const Duration(minutes: 5)) {
+      return null;
+    }
+    return spawn;
+  }
+
+  DateTime? autoCutSpawn(DateTime time) {
+    final spawn = lastSpawnAtOrBefore(time);
+    if (spawn == null) return null;
+    return time.difference(spawn) >= const Duration(minutes: 5) ? spawn : null;
+  }
+
   String get scheduleLabel {
     if (!isFixed) {
       final hours = intervalMinutes ~/ 60;

@@ -77,6 +77,7 @@ class BossController extends ChangeNotifier {
         throw StateError(cloudError ?? '최초 실행에는 공통 DB 연결이 필요합니다.');
       }
       await _applyPendingCuts();
+      await _applyAutoCuts();
       await _sync();
       if (_pending.isNotEmpty) await _syncCloud();
     } catch (e) {
@@ -202,6 +203,26 @@ class BossController extends ChangeNotifier {
     _cutTokens = tokens;
   }
 
+  Future<void> _applyAutoCuts() async {
+    final now = DateTime.now().toUtc();
+    var changed = false;
+    final updated = bosses.map((boss) {
+      final spawn = boss.autoCutSpawn(now);
+      if (spawn == null) return boss;
+      changed = true;
+      return boss.update(anchorMs: spawn.millisecondsSinceEpoch);
+    }).toList();
+    if (!changed) return;
+    final before = bosses;
+    bosses = updated;
+    try {
+      await _save();
+    } catch (_) {
+      bosses = before;
+      rethrow;
+    }
+  }
+
   Future<void> _sync() async {
     final now = DateTime.now().toUtc();
     final events = <Map<String, dynamic>>[];
@@ -244,6 +265,7 @@ class BossController extends ChangeNotifier {
     notifyListeners();
     try {
       await _applyPendingCuts();
+      await _applyAutoCuts();
       await _sync();
       await _syncCloud();
       error = null;
@@ -303,6 +325,7 @@ class BossController extends ChangeNotifier {
         rethrow;
       }
       if (!applyPendingCutsFirst) await _applyPendingCuts();
+      await _applyAutoCuts();
       await _sync();
       await _syncCloud();
     } catch (e) {

@@ -92,6 +92,10 @@ class _BossAlarmPageState extends State<BossAlarmPage>
             '${b.name} ${b.region} ${b.location}'.contains(search))
         .toList();
     list.sort((a, b) {
+      final au = a.unconfirmedSpawn(now), bu = b.unconfirmedSpawn(now);
+      if (au != null && bu != null) return au.compareTo(bu);
+      if (au != null) return -1;
+      if (bu != null) return 1;
       final at = a.nextSpawn(now), bt = b.nextSpawn(now);
       if (at == null && bt == null) return a.id.compareTo(b.id);
       if (at == null) return 1;
@@ -209,10 +213,21 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                               itemCount: list.length,
                               itemBuilder: (context, index) {
                                 final boss = list[index];
+                                final unconfirmed =
+                                    boss.unconfirmedSpawn(now);
                                 final spawn = boss.nextSpawn(now);
                                 final alarm = boss.nextAlarm(now);
                                 final remaining = spawn?.difference(now);
+                                final colorScheme =
+                                    Theme.of(context).colorScheme;
                                 return Card(
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                        side: unconfirmed == null
+                                            ? BorderSide.none
+                                            : BorderSide(
+                                                color: colorScheme.error,
+                                                width: 2)),
                                     margin: const EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 5),
                                     child: Padding(
@@ -227,6 +242,16 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                                         style: Theme.of(context)
                                                             .textTheme
                                                             .titleMedium)),
+                                                if (unconfirmed != null)
+                                                  Tooltip(
+                                                    message:
+                                                        '컷 미확인 · 5분 후 자동 반영',
+                                                    child: Icon(
+                                                        Icons
+                                                            .priority_high_rounded,
+                                                        color:
+                                                            colorScheme.error),
+                                                  ),
                                                 Switch(
                                                     value: boss.enabled,
                                                     onChanged: controller.busy
@@ -251,6 +276,38 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                                   '${boss.region} · ${boss.location}'),
                                               Text(boss.scheduleLabel),
                                               const SizedBox(height: 8),
+                                              if (unconfirmed != null)
+                                                Container(
+                                                    margin:
+                                                        const EdgeInsets.only(
+                                                            bottom: 8),
+                                                    padding: const EdgeInsets
+                                                        .symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 6),
+                                                    decoration: BoxDecoration(
+                                                        color: colorScheme
+                                                            .errorContainer,
+                                                        borderRadius:
+                                                            BorderRadius
+                                                                .circular(8)),
+                                                    child: Row(
+                                                        mainAxisSize:
+                                                            MainAxisSize.min,
+                                                        children: [
+                                                          Icon(Icons
+                                                              .help_outline,
+                                                              size: 18,
+                                                              color: colorScheme
+                                                                  .onErrorContainer),
+                                                          const SizedBox(
+                                                              width: 6),
+                                                          Text(
+                                                              '컷 미확인 ${koreaTime(unconfirmed)} · 5분 후 자동 컷',
+                                                              style: TextStyle(
+                                                                  color: colorScheme
+                                                                      .onErrorContainer)),
+                                                        ])),
                                               Text(spawn == null
                                                   ? '처치 시간을 설정해 주세요'
                                                   : '다음 젠 ${koreaTime(spawn)} · ${remaining!.inHours}시간 ${remaining.inMinutes % 60}분 남음'),

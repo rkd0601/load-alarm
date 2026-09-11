@@ -50,6 +50,25 @@ void main() {
     expect(boss.nextSpawn(anchor.add(const Duration(hours: 4))),
         anchor.add(const Duration(hours: 8)));
   });
+  test('필드 젠 직후 5분 동안 컷 미확인 상태로 남긴다', () {
+    final boss = field(anchor: anchor.millisecondsSinceEpoch);
+    final spawned = anchor.add(const Duration(hours: 4));
+    expect(boss.unconfirmedSpawn(spawned), spawned);
+    expect(boss.unconfirmedSpawn(spawned.add(const Duration(minutes: 4))),
+        spawned);
+    expect(boss.autoCutSpawn(spawned.add(const Duration(minutes: 4))),
+        isNull);
+    expect(boss.unconfirmedSpawn(spawned.add(const Duration(minutes: 5))),
+        isNull);
+    expect(boss.autoCutSpawn(spawned.add(const Duration(minutes: 5))),
+        spawned);
+  });
+  test('수동 컷 시각 자체는 컷 미확인으로 보지 않는다', () {
+    final checked = anchor.add(const Duration(minutes: 2));
+    final boss = field(anchor: checked.millisecondsSinceEpoch);
+    expect(boss.unconfirmedSpawn(checked), isNull);
+    expect(boss.autoCutSpawn(checked.add(const Duration(minutes: 5))), isNull);
+  });
   test('이미 지난 경고를 보내지 않고 다음 알림을 찾는다', () {
     final boss = field(anchor: anchor.millisecondsSinceEpoch);
     expect(boss.nextAlarm(anchor.add(const Duration(hours: 3, minutes: 56))),
