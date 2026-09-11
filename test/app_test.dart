@@ -291,10 +291,10 @@ void main() {
     await tester.pumpWidget(
         LordnineBossAlarmApp(controller: BossController(cloud: cloud)));
     await tester.pumpAndSettle();
-    expect(find.text('전체 45'), findsOneWidget);
+    expect(find.text('전체'), findsOneWidget);
     await tester.enterText(find.byType(TextField), '베나투스');
     await tester.pumpAndSettle();
-    await tester.tap(find.text('전체 설정'));
+    await tester.tap(find.byIcon(Icons.notifications_active));
     await tester.pumpAndSettle();
     expect(find.byType(AlertDialog), findsNothing);
     expect(cloud.writes, 0);
@@ -307,7 +307,7 @@ void main() {
         ((jsonDecode(saved!) as Map)['bosses'] as List)
             .every((b) => b['enabled'] == true),
         isTrue);
-    await tester.tap(find.text('전체 해제'));
+    await tester.tap(find.byIcon(Icons.notifications_off));
     await tester.pumpAndSettle();
     expect(lastSync!['events'], isEmpty);
     await tester.pumpWidget(const SizedBox.shrink());

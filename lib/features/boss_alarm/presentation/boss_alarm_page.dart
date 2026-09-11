@@ -153,57 +153,68 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                       child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('젠 5분 전 알림 · 모든 시간은 한국 시간',
-                                style: Theme.of(context).textTheme.titleSmall),
-                            Text('${controller.cloudStatus} · 30초마다 갱신',
-                                style: Theme.of(context).textTheme.bodySmall),
-                            const SizedBox(height: 4),
-                            const Text('처치·시간 수정은 모두에게 공유 · 알림 선택은 이 기기만 적용'),
-                            const SizedBox(height: 12),
-                            TextField(
-                                onChanged: (v) =>
-                                    setState(() => search = v.trim()),
-                                decoration: const InputDecoration(
-                                    prefixIcon: Icon(Icons.search),
-                                    hintText: '보스명 또는 지역 검색',
-                                    border: OutlineInputBorder())),
-                            const SizedBox(height: 8),
-                            Wrap(spacing: 8, children: [
-                              for (var i = 0; i < 3; i++)
-                                ChoiceChip(
-                                    label: Text(['전체 45', '필드 22', '고정 23'][i]),
-                                    selected: filter == i,
-                                    onSelected: (_) =>
-                                        setState(() => filter = i)),
-                            ]),
-                            const SizedBox(height: 8),
-                            Wrap(spacing: 8, children: [
-                              FilledButton.icon(
+                            Row(children: [
+                              Expanded(
+                                  child: Text(
+                                      '${controller.cloudStatus} · 30초마다 갱신',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall)),
+                              IconButton(
+                                tooltip: '전체 설정',
                                 onPressed:
                                     controller.busy || controller.bosses.isEmpty
                                         ? null
                                         : () => controller.setAllEnabled(true),
                                 icon: const Icon(Icons.notifications_active),
-                                label: const Text('전체 설정'),
                               ),
-                              OutlinedButton.icon(
+                              IconButton(
+                                tooltip: '전체 해제',
                                 onPressed:
                                     controller.busy || controller.bosses.isEmpty
                                         ? null
                                         : () => controller.setAllEnabled(false),
                                 icon: const Icon(Icons.notifications_off),
-                                label: const Text('전체 해제'),
                               ),
-                              OutlinedButton.icon(
+                              IconButton(
+                                tooltip: '전체 시간 리셋',
                                 onPressed:
                                     controller.busy || controller.bosses.isEmpty
                                         ? null
                                         : _resetAllTimes,
                                 icon: const Icon(Icons.restart_alt),
-                                label: const Text('전체 시간 리셋'),
                               ),
                             ]),
-                            const Text('알림 선택만 변경 · 미설정 필드는 전체 시간 리셋 후 예약'),
+                            const SizedBox(height: 8),
+                            Row(children: [
+                              Expanded(
+                                  child: TextField(
+                                      onChanged: (v) =>
+                                          setState(() => search = v.trim()),
+                                      decoration: const InputDecoration(
+                                          isDense: true,
+                                          prefixIcon: Icon(Icons.search),
+                                          hintText: '보스명 또는 지역 검색',
+                                          border: OutlineInputBorder()))),
+                              const SizedBox(width: 8),
+                              PopupMenuButton<int>(
+                                tooltip: '필터',
+                                initialValue: filter,
+                                onSelected: (value) =>
+                                    setState(() => filter = value),
+                                itemBuilder: (context) => [
+                                  for (var i = 0; i < 3; i++)
+                                    PopupMenuItem(
+                                        value: i,
+                                        child: Text(['전체 45', '필드 22', '고정 23']
+                                            [i])),
+                                ],
+                                child: InputChip(
+                                  avatar: const Icon(Icons.filter_list),
+                                  label: Text(['전체', '필드', '고정'][filter]),
+                                ),
+                              ),
+                            ]),
                           ])),
                   if (controller.busy) const LinearProgressIndicator(),
                   Expanded(
@@ -300,10 +311,10 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                                               size: 18,
                                                               color: colorScheme
                                                                   .onErrorContainer),
-                                                          const SizedBox(
-                                                              width: 6),
-                                                          Text(
-                                                              '컷 미확인 ${koreaTime(unconfirmed)} · 5분 후 자동 컷',
+                                                      const SizedBox(
+                                                          width: 6),
+                                                      Text(
+                                                              '컷 미확인 · ${koreaTime(unconfirmed)} 출몰',
                                                               style: TextStyle(
                                                                   color: colorScheme
                                                                       .onErrorContainer)),
