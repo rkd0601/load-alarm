@@ -7,6 +7,7 @@ class Boss {
     required this.intervalMinutes,
     required this.weekdays,
     required this.minuteOfDay,
+    this.catalogVersion = 0,
     this.ability = '',
     this.loot = '',
     this.enabled = false,
@@ -14,6 +15,7 @@ class Boss {
   });
 
   final int id;
+  final int catalogVersion;
   final String name, region, location, ability, loot;
   final int intervalMinutes, minuteOfDay;
   final List<int> weekdays;
@@ -24,6 +26,7 @@ class Boss {
   factory Boss.fromJson(Map<String, dynamic> json) {
     final boss = Boss(
       id: json['id'] as int,
+      catalogVersion: json['catalogVersion'] as int? ?? 0,
       name: json['name'] as String,
       region: json['region'] as String,
       location: json['location'] as String,
@@ -48,6 +51,7 @@ class Boss {
 
   Map<String, dynamic> toJson() => {
         'id': id,
+        'catalogVersion': catalogVersion,
         'name': name,
         'region': region,
         'location': location,

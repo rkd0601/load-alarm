@@ -15,16 +15,18 @@ class BossFirebaseOptions {
     if (_apiKey.isEmpty || _appId.isEmpty || _senderId.isEmpty) {
       throw StateError('Firebase 앱 연결 설정이 누락되었습니다.');
     }
-    if (kIsWeb ||
+    if (!kIsWeb &&
         (defaultTargetPlatform != TargetPlatform.android &&
             defaultTargetPlatform != TargetPlatform.iOS)) {
-      throw UnsupportedError('Firebase 연결은 Android/iOS에서 지원합니다.');
+      throw UnsupportedError('Firebase 연결은 Android/iOS/웹에서 지원합니다.');
     }
     return const FirebaseOptions(
       apiKey: _apiKey,
       appId: _appId,
       messagingSenderId: _senderId,
       projectId: _projectId,
+      authDomain:
+          kIsWeb ? String.fromEnvironment('FIREBASE_AUTH_DOMAIN') : null,
       iosBundleId: 'com.lordnine.lordnineBossAlarm',
     );
   }

@@ -1,22 +1,23 @@
 # 로드나인 보스 알림
 
-Flutter Android/iOS 앱. 보스별 처치 시각, 젠 주기 또는 고정 요일을 저장하고 젠 5분 전에 **기기 로컬 알림**을 예약합니다. Firebase 설정 시 Firestore에 사용자별 시간표를 동기화합니다. FCM/APNs 원격 푸시와 여러 기기에서 사용할 계정 로그인은 포함하지 않습니다.
+Flutter Android/iOS 앱. 보스별 처치 시각, 젠 주기 또는 고정 요일을 저장하고 젠 5분 전에 **기기 로컬 알림**을 예약합니다. Firestore의 공통 보스 시간표를 모든 사용자가 공유합니다. 알림 선택은 기기별로 저장합니다. FCM/APNs 원격 푸시와 여러 기기에서 사용할 계정 로그인은 포함하지 않습니다.
 
 ## 기본 데이터
 
-[사용자 제공 스프레드시트](https://docs.google.com/spreadsheets/d/1b8pYSKejoEAAlao9H0KyKWhfpHKaFdg-XEiCXEXf7Jo)의 두 번째 시트 `보스탐체크`와 세 번째 시트 `보스List`를 2026-09-08에 내려받아 교차 검증했습니다.
+[사용자 제공 스프레드시트](https://docs.google.com/spreadsheets/d/1b8pYSKejoEAAlao9H0KyKWhfpHKaFdg-XEiCXEXf7Jo)의 두 번째 시트 `보스탐체크`와 세 번째 시트 `보스List`를 2026-09-11에 내려받아 교차 검증했습니다.
 
 - 필드 22종, 고정 23종. 이름·지역·상세 위치·젠 규칙은 3번 시트, 어빌/드롭 정보는 2번 시트를 사용합니다.
 - Excel의 숫자 시간은 일 단위이므로 1440을 곱해 분으로 변환합니다. 베나투스/비오렌트 4시간, 슈라이어/라르바/카테나 26시간, 세크레타/오르도/아스타/수포르 46시간 등이 포함됩니다.
-- 두 시트의 45종 젠 규칙이 모두 일치합니다. 기존 시트의 과거 처치 시각은 복사하지 않습니다.
-- `assets/bosses.json`에 기본 데이터를 보관합니다. 첫 실행은 알림 OFF이며 필드 보스는 처치 시간 미설정 상태입니다.
-- 원본 시트의 장소 표기는 그대로 유지합니다. 기본 데이터 변경은 기존 사용자의 수정된 설정에 자동 덮어쓰지 않습니다.
+- 두 시트의 45종 젠 규칙이 모두 일치합니다. 날짜까지 확인된 필드 처치 기록 16종을 공통 DB 초기값으로 가져왔습니다. 세크레타·아스타·수포르(빈 칸), 슈라이어·라르바·카테나(날짜 없음)는 미설정으로 남깁니다.
+- `assets/bosses.json`에는 이름·지역 등 설명 정보만 남기고 앱 번들에서도 제외했습니다. 시간표는 `bossSchedules/{보스 ID}`에서 읽습니다. 첫 실행은 인터넷 연결이 필요하며 알림은 OFF입니다.
+- 원본 시트의 장소 표기는 그대로 유지합니다. JSON 버전으로 시간을 덮어쓰지 않습니다. 기존 사용자별 시간표는 공통 DB에 자동 업로드하지 않으며 알림 선택만 유지합니다.
 
 재생성:
 
 ```powershell
 Invoke-WebRequest -Uri 'https://docs.google.com/spreadsheets/d/1b8pYSKejoEAAlao9H0KyKWhfpHKaFdg-XEiCXEXf7Jo/export?format=xlsx' -OutFile boss-source.xlsx
-python tools/import_bosses.py boss-source.xlsx
+python tools/import_bosses.py boss-source.xlsx /tmp/boss-seed.json
+node tools/seed_shared_bosses.cjs /tmp/boss-seed.json load-alarm
 ```
 
 가져오기 스크립트는 Python 표준 라이브러리만 사용합니다. 두 시트의 주기가 다르거나 예상 보스 수가 달라지면 실패하므로 원본 변경을 확인한 후 갱신해야 합니다.
@@ -26,7 +27,8 @@ python tools/import_bosses.py boss-source.xlsx
 1. 보스명/지역으로 검색합니다.
 2. 필드 보스의 `지금 처치 체크`를 누르거나 `처치 시간 입력`에서 실제 날짜(YYYY-MM-DD)와 시각(HH:mm 또는 HH:mm:ss)을 직접 입력합니다. 모든 입력은 한국 시간이며 미래 시각은 허용하지 않습니다. 주기는 `시간 설정`에서 수정합니다.
 3. 알림 스위치를 켭니다. 미설정 필드 보스는 시간 설정 창이 열립니다.
-4. 권한 안내에서 기기 알림 및 Android 정확한 알람 권한을 허용합니다.
+4. `전체 시간 리셋`에서 한국 날짜와 시각을 입력하면 검색과 관계없이 모든 필드 보스의 처치 기준을 변경하고 DB 저장 및 알림 재예약을 진행합니다. 고정 보스 일정과 알림 선택은 유지하며 미래 기준 시간은 허용하지 않습니다.
+5. 권한 안내에서 기기 알림 및 Android 정확한 알람 권한을 허용합니다.
 
 모든 표시 및 고정 일정은 한국 시간(UTC+9)입니다. 필드는 `처치 기준 + n × 주기`로 계산하므로 체크를 여러 번 놓쳐도 시각이 밀리지 않습니다. 새 처치 체크 시 기준이 바뀌고 이전 예약을 교체합니다. 체크는 기존 알림 ON/OFF 선택을 유지합니다.
 
@@ -93,11 +95,11 @@ flutter build apk --debug --target D:/dev/workspace/vscode/sg/alarm/lib/main.dar
 
 ## 전체 알림 설정/해제
 
-목록 위의 `전체 설정`과 `전체 해제`는 검색 및 필터와 관계없이 전체 보스에 적용됩니다. 전체 설정은 고정 보스와 처치 시간이 입력된 필드 보스의 알림을 켭니다. 처치 시간이 없는 필드 보스는 제외됩니다. 전체 해제는 모든 알림을 끄고 예약을 취소하며, 처치 시간과 젠 주기는 유지합니다. 변경 사항은 한 번에 저장하고 알림을 다시 예약합니다.
+목록 위의 `전체 설정`과 `전체 해제`는 검색 및 필터와 관계없이 전체 보스에 적용됩니다. 전체 설정은 모든 보스의 알림을 켭니다. 처치 시간 입력 창은 열리지 않고, 미설정 필드를 포함해 알림 선택만 켭니다. 처치 시간과 공통 DB는 변경하지 않습니다. 미설정 필드는 전체 시간 리셋이나 개별 처치 시간 입력 후 예약됩니다. 전체 해제는 모든 알림을 끄고 예약을 취소하며, 처치 시간과 젠 주기는 유지합니다. 변경 사항은 한 번에 저장하고 알림을 다시 예약합니다.
 
 ## Firebase Firestore 연결
 
-현재 Flutter 3.13.3 / Dart 3.1.1에 맞춰 firebase_core 2.24.2, firebase_auth 4.15.3, cloud_firestore 4.14.0을 고정합니다. Firebase 연결 설정 없이 빌드하면 기존 기기 저장 방식으로 동작합니다.
+현재 Flutter 3.13 계열 / Dart 3.1.1에 맞춰 firebase_core 2.24.2, firebase_auth 4.15.3, cloud_firestore 4.14.0을 고정합니다. 첫 실행에는 Firebase 연결 설정 및 공통 DB 초기화가 필요합니다. 이후 연결이 끊기면 마지막 기기 캐시와 예약을 사용합니다.
 
 1. Firebase 콘솔에서 사용할 프로젝트를 선택하고 무료 Spark 플랜을 유지합니다.
 2. Firestore Database를 **Standard edition / (default)**로 생성합니다. 한국 사용자 중심이면 제공 지역에서 서울(asia-northeast3)을 선택합니다.
@@ -113,21 +115,24 @@ flutter run --dart-define-from-file=config/firebase.android.json
 
 iOS에서는 `config/firebase.ios.json`을 사용하고 macOS/Xcode에서 빌드합니다. Dart의 FirebaseOptions로 초기화하므로 이 구성에는 google-services Gradle 플러그인이 필요하지 않습니다.
 
-저장 경로는 `bossAlarmUsers/{익명 UID}/schedules/current`입니다. 보스 45종과 처치 시간, 알림 선택을 문서 하나로 저장합니다. 자기 UID의 시간표만 읽고 쓸 수 있으며 공용 시간표는 아닙니다. 익명 계정이 사라지는 앱 데이터 삭제/재설치 후에는 기존 DB 기록을 복구할 수 없습니다. 다른 기기와 공유하려면 계정 로그인 또는 길드 권한 모델을 추가해야 합니다.
+저장 경로는 `bossSchedules/{보스 ID}`입니다. 리젠 간격, 고정 요일·시각, 마지막 처치 시각을 모든 사용자가 공유합니다. 로그인은 익명 인증을 사용하며 로그인한 사용자는 시간 필드만 변경할 수 있습니다. 보스 생성·삭제·이름 변경은 관리자만 가능합니다. `enabled`(알림 선택)는 공유 문서에 쓰지 않고 기기에만 저장합니다.
 
-기존 기기 저장 데이터는 최초 연결 시 우선 업로드합니다. 처치 체크, 시간 수정, 전체 설정/해제는 기기에 먼저 저장하고 알림을 예약한 뒤 DB에 전송합니다. 전송 실패 시 미전송 상태도 기기에 남기며 다음 실행, 앱 복귀 또는 새로고침에서 재시도합니다. 동기화된 상태에서는 DB 문서를 다시 읽어 로컬 시간표와 알림을 갱신합니다. DB에서 잘못된 데이터가 내려오면 기존 기기 시간표를 유지합니다. 원격 연결 대기는 호출당 8초로 제한합니다.
+처치 체크·시간 수정·전체 리셋은 공통 DB에 반영됩니다. 변경한 보스의 변경한 필드만 전송하므로 다른 보스의 동시 수정은 보존됩니다. 같은 필드는 마지막으로 서버에 저장된 값이 적용됩니다. 오프라인 변경은 기기에 보관하여 재연결 시 전송하며, 기기는 알림 예약에 필요한 DB 캐시를 유지합니다. 이전 사용자별 DB 기록은 남겨 두되 새 앱은 읽거나 업로드하지 않습니다.
 
-초 단위 카운트다운은 DB에 접근하지 않습니다. 화면 상단에서 DB 동기화 상태를 확인할 수 있습니다. 앱이 종료되어 있는 동안에는 DB 변경을 실시간으로 수신하지 않으며, 기기에 이미 예약된 알림을 사용합니다.
+앱 시작·복귀·새로고침 및 화면이 열린 동안 30초마다 공통 시간표를 불러와 예약을 갱신합니다. 앱이 닫혀 있으면 다른 사용자의 변경을 받지 못하고 마지막 예약을 사용합니다. 웹 알림 역시 페이지가 실행 중이어야 합니다.
+
+관리자는 Firestore 콘솔에서 해당 보스 문서의 `anchorMs`(UTC Unix 밀리초), `intervalMinutes`, `weekdays`(월=1~일=7), `minuteOfDay`(한국 시간 자정 이후 분)를 수정할 수 있습니다. 변경에 앱 재빌드가 필요하지 않습니다. 최초 가져오기 도구는 기존 DB 문서를 덮어쓰지 않습니다.
 
 공식 문서: [Flutter 연결](https://firebase.google.com/docs/flutter/setup), [익명 인증](https://firebase.google.com/docs/auth/flutter/anonymous-auth), [접근 규칙](https://firebase.google.com/docs/firestore/security/rules-conditions).
 
 ### 연결된 프로젝트
 
-- 프로젝트: `osle-sg`
+- 프로젝트: `load-alarm`
+- 2026-09-11: Android/iOS/웹 설정을 이 프로젝트로 변경하고 익명 인증 및 DB 접근 권한 검증 완료. Hosting 주소: https://load-alarm.web.app
 - Firestore: `(default)`, Standard, 서울 `asia-northeast3`, 무료 DB 확인
 - Android/iOS 등록 및 로컬 `config/firebase.android.json`, `config/firebase.ios.json` 생성 완료
 - VS Code 실행 구성에서 `Boss Alarm (Firebase Android)` 또는 iOS 구성을 선택합니다.
-- 2026-09-09: 사용자별 Firestore 규칙 배포 완료. 기존 규칙은 2023-12-02에 만료된 테스트 규칙이었고 `.firebase/setup-backup/`에 백업했습니다. CLI 배포는 프로젝트의 Service Usage API 비활성화로 실패하여 공식 Rules API로 배포했습니다.
+- 이전 `osle-sg` 프로젝트 작업 기록(2026-09-09): 사용자별 Firestore 규칙 배포 완료. 기존 규칙은 2023-12-02에 만료된 테스트 규칙이었고 `.firebase/setup-backup/`에 백업했습니다. CLI 배포는 프로젝트의 Service Usage API 비활성화로 실패하여 공식 Rules API로 배포했습니다.
 - Authentication 익명 로그인 활성화 완료. 실제 서버에서 보스 45종 저장/조회, 비로그인 및 타 사용자 접근 차단, 잘못된 데이터 차단을 검증했습니다. 테스트 계정과 문서는 검증 후 삭제했습니다.
 
 ```powershell
@@ -165,3 +170,44 @@ TestFlight 배포용 아카이브는 `bash tools/build_ios.sh app-store`로 빌�
 앱 시작이 지연되거나 저장/예약이 실패해도 처치 요청은 기기에 남겨 재시도합니다. 완료된 요청과 오래된 처치 시각은 중복 적용하지 않습니다. 네트워크가 끊기면 기기 시간표와 알림을 먼저 반영하고 다음 동기화에서 DB에 전송합니다. 이 기능은 현재 앱이 생성하는 기기 로컬 알림에 적용됩니다.
 
 Android/iOS에서 앱 종료·실행 중 각각 컷을 누르고 기준 시각, 재예약, DB 반영을 확인해야 합니다. iOS 코드는 Windows에서 빌드하거나 실기기 검증하지 못했습니다.
+
+## 웹 실행
+
+웹에서도 동일한 시트 시간표, 검색, 처치 시간 입력, 전체 시간 리셋, 알림 선택을 사용합니다. 브라우저 localStorage에는 캐시와 알림 선택을 저장하며, 처치 시간표는 모바일과 같은 공통 Firestore에서 가져옵니다.
+
+```sh
+flutter run -d chrome
+flutter build web --pwa-strategy=none
+```
+
+DB 연결 시 Firebase 콘솔에서 같은 프로젝트에 웹 앱을 등록하고 공개 앱 설정을 `config/firebase.web.json`에 넣습니다(`config/firebase.web.example.json` 참고). 모바일 앱 ID 대신 웹 앱 ID를 사용하며, Authentication의 승인된 도메인에 실제 웹 도메인을 추가합니다.
+
+```sh
+flutter build web --pwa-strategy=none --dart-define-from-file=config/firebase.web.json
+firebase deploy --only hosting
+```
+
+Firebase Hosting 설정은 `build/web`을 제공합니다. 위 배포 명령은 운영 사이트를 변경하므로 실제 배포 시 실행합니다.
+
+웹 알림은 HTTPS(개발 시 localhost)와 브라우저 알림 권한이 필요합니다. 페이지가 열린 동안 타이머가 서비스 워커에 알림 표시를 요청합니다. 탭 종료 후에는 예약이 실행되지 않으며 백그라운드·절전 상태에서는 지연될 수 있습니다. 1분 넘게 늦어진 사전 알림은 생략합니다. 탭을 다시 보면 시간표와 예약을 갱신합니다. 닫힌 웹에도 알림을 보내는 서버 Web Push는 포함하지 않습니다. 알림 클릭 시 앱으로 이동하고 처치 체크는 앱에서 진행합니다.
+
+현재 작업 환경에는 `load-alarm` 프로젝트의 `Boss Alarm Web` 앱 설정이 `config/firebase.web.json`에 준비되어 있습니다. 이 파일은 Git에서 제외됩니다. 웹 설정으로 실제 익명 로그인, 45종 DB 저장·조회 및 접근 권한 검증을 완료했습니다.
+
+## 로컬 웹 서버
+
+프로젝트 폴더에서 실행합니다(Python 3 및 Flutter SDK 필요).
+
+```sh
+python3 tools/serve_web.py
+```
+
+`config/firebase.web.json`으로 최신 웹을 빌드한 뒤 http://localhost:8080 에서 제공합니다. Safari 등 브라우저로 접속하고, 종료는 터미널에서 Ctrl+C를 누릅니다. 소스를 수정한 경우 서버를 종료하고 같은 명령으로 다시 빌드합니다.
+
+```sh
+# 기존 빌드로 바로 실행
+python3 tools/serve_web.py --no-build
+# 다른 포트 사용
+python3 tools/serve_web.py --port 8081
+```
+
+서버는 이 컴퓨터에서만 접속할 수 있도록 127.0.0.1에 바인딩합니다. 앱 파일은 로컬에서 제공하지만 DB는 실제 `load-alarm` Firebase를 사용합니다. Firebase 에뮬레이터는 실행하지 않습니다. 웹 알림은 localhost에서 권한 허용 후 사용하며, 페이지를 닫으면 중단됩니다.

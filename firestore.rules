@@ -1,6 +1,26 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    match /bossSchedules/{bossId} {
+      allow read: if request.auth != null;
+      allow update: if request.auth != null
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['anchorMs', 'intervalMinutes', 'weekdays', 'minuteOfDay', 'updatedAt'])
+        && (request.resource.data.anchorMs == null ||
+            (request.resource.data.anchorMs is int && request.resource.data.anchorMs > 0
+             && request.resource.data.anchorMs <= request.time.toMillis()))
+        && request.resource.data.intervalMinutes is int
+        && request.resource.data.intervalMinutes >= 0
+        && request.resource.data.intervalMinutes <= 525600
+        && request.resource.data.weekdays is list
+        && request.resource.data.weekdays.size() <= 7
+        && request.resource.data.weekdays.hasOnly([1, 2, 3, 4, 5, 6, 7])
+        && (request.resource.data.weekdays.size() > 0 || request.resource.data.intervalMinutes > 5)
+        && request.resource.data.minuteOfDay is int
+        && request.resource.data.minuteOfDay >= 0 && request.resource.data.minuteOfDay < 1440
+        && request.resource.data.updatedAt == request.time;
+      allow create, delete: if false;
+    }
     match /bossAlarmUsers/{userId}/schedules/current {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow create, update: if request.auth != null

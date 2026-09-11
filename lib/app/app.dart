@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../core/theme/app_theme.dart';
+import '../features/boss_alarm/application/boss_controller.dart';
 import '../features/boss_alarm/presentation/boss_alarm_page.dart';
 
 class LordnineBossAlarmApp extends StatelessWidget {
-  const LordnineBossAlarmApp({super.key});
+  const LordnineBossAlarmApp({super.key, this.controller});
+  final BossController? controller;
 
   @override
   Widget build(BuildContext context) {
@@ -14,7 +16,7 @@ class LordnineBossAlarmApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: ThemeMode.system,
-      home: const BossAlarmPage(),
+      home: BossAlarmPage(controller: controller),
     );
   }
 }

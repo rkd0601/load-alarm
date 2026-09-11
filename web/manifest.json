@@ -1,0 +1,9 @@
+{
+  "name": "로드나인 보스 알림",
+  "short_name": "보스 알림",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1565c0",
+  "lang": "ko"
+}

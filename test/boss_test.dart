@@ -17,7 +17,7 @@ void main() {
   final anchor = DateTime.utc(2026, 9, 8, 1);
   test('시트 원본의 45종과 대표 주기를 가져온다', () {
     final root =
-        jsonDecode(File('assets/bosses.json').readAsStringSync()) as Map;
+        jsonDecode(File('test/fixtures/boss_catalog.json').readAsStringSync()) as Map;
     final bosses = (root['bosses'] as List)
         .map((j) => Boss.fromJson(Map<String, dynamic>.from(j as Map)))
         .toList();

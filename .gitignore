@@ -50,3 +50,5 @@ app.*.map.json
 
 /config/google-services.json
 /config/GoogleService-Info.plist
+
+/config/firebase.web.json

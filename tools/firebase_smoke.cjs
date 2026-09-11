@@ -1,8 +1,15 @@
-﻿// Uses temporary anonymous users and removes only their verification data.
+// Uses temporary anonymous users and removes only their verification data.
 // Run: node tools/firebase_smoke.cjs config/firebase.android.json
 const fs = require('fs');
 const path = require('path');
 const assert = require('assert/strict');
+const {execFileSync} = require('child_process');
+// Resolve and validate cleanup access before creating any test users.
+const globalModules = process.env.APPDATA
+  ? path.join(process.env.APPDATA, 'npm/node_modules')
+  : execFileSync('npm', ['root', '-g'], {encoding: 'utf8'}).trim();
+const firebaseAuth = require(path.join(globalModules, 'firebase-tools/lib/auth.js'));
+let cleanupToken;
 const config = JSON.parse(fs.readFileSync(process.argv[2] || 'config/firebase.android.json', 'utf8'));
 const project = config.FIREBASE_PROJECT_ID;
 const base = `https://firestore.googleapis.com/v1/projects/${project}/databases/(default)/documents`;
@@ -33,38 +40,44 @@ function field(value) {
   return {mapValue: {fields: Object.fromEntries(Object.entries(value).map(([k,v]) => [k,field(v)]))}};
 }
 async function main() {
+  const account = firebaseAuth.getGlobalDefaultAccount();
+  if (!account) throw new Error('Firebase CLI login is required for test cleanup.');
+  cleanupToken = (await firebaseAuth.getAccessToken(
+    account.tokens.refresh_token, account.tokens.scopes || [])).access_token;
   for (let i = 0; i < 2; i++) {
-    const user = requireSuccess(await request(`${authBase}signUp?key=${config.FIREBASE_API_KEY}`, 'POST', {returnSecureToken: true}), 'Anonymous sign-in');
-    users.push(user);
+    users.push(requireSuccess(await request(`${authBase}signUp?key=${config.FIREBASE_API_KEY}`,
+      'POST', {returnSecureToken:true}), 'Anonymous sign-in'));
   }
-  console.log('PASS: anonymous sign-in');
-  const uid = users[0].localId;
-  documentName = `projects/${project}/databases/(default)/documents/bossAlarmUsers/${uid}/schedules/current`;
-  const url = `${base}/bossAlarmUsers/${uid}/schedules/current`;
-  const document = JSON.parse(fs.readFileSync('assets/bosses.json', 'utf8'));
-  const fields = field({schemaVersion: 1, bosses: document.bosses}).mapValue.fields;
-  const write = {update: {name: documentName, fields}, updateTransforms: [{fieldPath:'updatedAt',setToServerValue:'REQUEST_TIME'}]};
-  requireSuccess(await request(`${base}:commit`, 'POST', {writes:[write]}, users[0].idToken), 'Own schedule write');
-  const stored = requireSuccess(await request(url, 'GET', null, users[0].idToken), 'Own schedule read');
-  assert.equal(stored.fields.bosses.arrayValue.values.length, 45);
-  console.log('PASS: 45-boss schedule write/read');
-  const denied = [
-    ['unauthenticated read', await request(url)],
-    ['other user read', await request(url, 'GET', null, users[1].idToken)],
-    ['other user write', await request(`${base}:commit`, 'POST', {writes:[write]}, users[1].idToken)],
-    ['malformed write', await request(`${base}:commit`, 'POST', {writes:[{...write,update:{name:documentName,fields:{...fields,schemaVersion:{integerValue:'2'}}}}]}, users[0].idToken)]
-  ];
-  for (const [label, result] of denied) {
-    assert.equal(result.status, 403, `${label} must be rejected`);
-    console.log(`PASS: ${label} denied`);
+  const url = `${base}/bossSchedules/1`;
+  const first = requireSuccess(await request(url,'GET',null,users[0].idToken), 'Shared read A');
+  const second = requireSuccess(await request(url,'GET',null,users[1].idToken), 'Shared read B');
+  assert.deepEqual(first.fields, second.fields);
+  console.log('PASS: two anonymous users read the same shared boss');
+  const all = requireSuccess(await request(`${base}/bossSchedules?pageSize=100`,'GET',null,users[0].idToken), 'Shared list');
+  assert.equal(all.documents.length,45);
+  console.log('PASS: shared DB contains 45 bosses');
+  // Validate a real authorized write without changing any boss time. The
+  // precondition prevents overwriting a concurrent user's edit.
+  const write = {update:{name:first.name,fields:{intervalMinutes:first.fields.intervalMinutes}},
+    updateMask:{fieldPaths:['intervalMinutes']},currentDocument:{updateTime:first.updateTime},
+    updateTransforms:[{fieldPath:'updatedAt',setToServerValue:'REQUEST_TIME'}]};
+  requireSuccess(await request(`${base}:commit`,'POST',{writes:[write]},users[0].idToken), 'Shared same-value write');
+  const changed = requireSuccess(await request(url,'GET',null,users[1].idToken), 'Other user sees write');
+  assert.notEqual(changed.updateTime, first.updateTime);
+  assert.deepEqual(changed.fields.intervalMinutes, first.fields.intervalMinutes);
+  console.log('PASS: shared update visible to another user; time value unchanged');
+  const unauthorized = await request(url);
+  assert.equal(unauthorized.status,403);
+  for (const [fieldName,value] of [['enabled',{booleanValue:true}],['intervalMinutes',{integerValue:'0'}],['name',{stringValue:'invalid'}]]) {
+    const bad = {update:{name:first.name,fields:{[fieldName]:value}},updateMask:{fieldPaths:[fieldName]},
+      updateTransforms:[{fieldPath:'updatedAt',setToServerValue:'REQUEST_TIME'}]};
+    assert.equal((await request(`${base}:commit`,'POST',{writes:[bad]},users[0].idToken)).status,403);
   }
+  console.log('PASS: unauthenticated access, invalid time, shared alarm preference and name edits denied');
 }
 async function cleanup() {
   if (documentName) {
-    const auth = require(path.join(process.env.APPDATA, 'npm/node_modules/firebase-tools/lib/auth.js'));
-    const account = auth.getGlobalDefaultAccount();
-    const token = await auth.getAccessToken(account.tokens.refresh_token, account.tokens.scopes || []);
-    requireSuccess(await request('https://firestore.googleapis.com/v1/'+documentName, 'DELETE', null, token.access_token), 'Test document cleanup');
+    requireSuccess(await request('https://firestore.googleapis.com/v1/'+documentName, 'DELETE', null, cleanupToken), 'Test document cleanup');
   }
   for (const user of users) {
     requireSuccess(await request(`${authBase}delete?key=${config.FIREBASE_API_KEY}`, 'POST', {idToken: user.idToken}), 'Test account cleanup');

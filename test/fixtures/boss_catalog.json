@@ -1,0 +1,694 @@
+{
+  "schemaVersion": 1,
+  "timezone": "Asia/Seoul",
+  "source": "https://docs.google.com/spreadsheets/d/1b8pYSKejoEAAlao9H0KyKWhfpHKaFdg-XEiCXEXf7Jo",
+  "sheets": [
+    2,
+    3
+  ],
+  "bosses": [
+    {
+      "catalogVersion": 20260911,
+      "id": 1,
+      "name": "베나투스",
+      "region": "오염된 분지",
+      "location": "오염된 강줄기",
+      "ability": "델폰",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 240,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 2,
+      "name": "클레멘티스",
+      "region": "오염된 분지",
+      "location": "하얀 마녀의 요람",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        1,
+        5
+      ],
+      "minuteOfDay": 750
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 3,
+      "name": "비오렌트",
+      "region": "초승달 호수",
+      "location": "아가미 개울",
+      "ability": "랩폰",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 240,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 4,
+      "name": "사피루스",
+      "region": "초승달 호수",
+      "location": "달빛 속박",
+      "ability": "라베스",
+      "loot": "검방,전투봉,전방,지팡이,활",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        2,
+        6
+      ],
+      "minuteOfDay": 750
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 5,
+      "name": "레이디 달리아",
+      "region": "황혼의 구릉지",
+      "location": "핏빛 그늘",
+      "ability": "드라카스",
+      "loot": "전투봉,전방,단검,활,목걸이",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 840,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 6,
+      "name": "튀멜레",
+      "region": "황혼의 구릉지",
+      "location": "폭주의 자국",
+      "ability": "바폰",
+      "loot": "검방,대검,단검,석궁\n귀걸이",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        1,
+        5
+      ],
+      "minuteOfDay": 1110
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 7,
+      "name": "에고",
+      "region": "율란 협곡",
+      "location": "탈환 집결지",
+      "ability": "리버티",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 960,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 8,
+      "name": "리베라",
+      "region": "수호자의 유적지",
+      "location": "검은 폭풍 반도",
+      "ability": "번개정령\n페르롤로프",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1080,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 9,
+      "name": "네우트로",
+      "region": "절규하는 자의 사막",
+      "location": "애증의 결전",
+      "ability": "",
+      "loot": "권갑,전방,대검,지팡이,석궁",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        2,
+        4
+      ],
+      "minuteOfDay": 1110
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 10,
+      "name": "아멘티스",
+      "region": "영광의땅",
+      "location": "석회암 곶",
+      "ability": "글레이시스",
+      "loot": "검방,전투봉,전방,지팡이,활\n팔찌",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1320,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 11,
+      "name": "남작 브라우드모어",
+      "region": "성전사단 격전지",
+      "location": "장미 덩굴 다리",
+      "ability": "라바토니스",
+      "loot": "권갑,검방,대검,석궁\n반지",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1440,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 12,
+      "name": "링코르",
+      "region": "성전사단 격전지",
+      "location": "횃불 가도",
+      "ability": "지속치유",
+      "loot": "권갑,검방,대검,지팡이,석궁\n목걸이",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        6
+      ],
+      "minuteOfDay": 960
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 13,
+      "name": "듀플리칸",
+      "region": "혁명의 고원",
+      "location": "눈 뜬 꼭두각시의 옥좌",
+      "ability": "구사일생",
+      "loot": "검방,전방,단검,활\n팔찌",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 2160,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 14,
+      "name": "와니타스",
+      "region": "혁명의 고원",
+      "location": "올가미 수령",
+      "ability": "극복",
+      "loot": "검방,전투봉,대검,석궁\n반지",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 2160,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 15,
+      "name": "메투스",
+      "region": "혁명의 고원",
+      "location": "추종자 벌판",
+      "ability": "자기장생성",
+      "loot": "전방,대검,지팡이,단검,활\n허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 2160,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 16,
+      "name": "슈라이어",
+      "region": "전쟁의 폐허",
+      "location": "사냥개의 가면극",
+      "ability": "해부학",
+      "loot": "전투봉,전방,대검,석궁\n팔찌",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1560,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 17,
+      "name": "라르바",
+      "region": "전쟁의 폐허",
+      "location": "가르바나 간척지",
+      "ability": "",
+      "loot": "전투봉,전방,지팡이,단검,활,귀걸이\n반지",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1560,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 18,
+      "name": "세크레타",
+      "region": "붉은 억새 평원",
+      "location": "칼리온의 무덤",
+      "ability": "",
+      "loot": "권갑,지팡이,활\n목걸이,귀걸이",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 2760,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 19,
+      "name": "오르도",
+      "region": "붉은 억새 평원",
+      "location": "후계자의 낙원",
+      "ability": "",
+      "loot": "권갑,검방,전방,석궁\n팔찌,허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 2760,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 20,
+      "name": "아스타",
+      "region": "붉은 억새 평원",
+      "location": "황금피 평원",
+      "ability": "무장해제",
+      "loot": "전방,대검,단검,활\n귀걸이,반지",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 2760,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 21,
+      "name": "수포르",
+      "region": "붉은 억새 평원",
+      "location": "황금피 평원",
+      "ability": "초감각",
+      "loot": "검방,전투봉,대검\n목걸이,허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 2760,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 22,
+      "name": "샤이프락",
+      "region": "붉은 억새 평원",
+      "location": "칼리온의 무덤",
+      "ability": "전장의 함성",
+      "loot": "검방,전방,대검,단검\n목걸이,반지,허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        6
+      ],
+      "minuteOfDay": 1320
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 23,
+      "name": "벤지",
+      "region": "바르바스",
+      "location": "복수의 둥지",
+      "ability": "시간역행",
+      "loot": "권갑,전투봉,지팡이,활,석궁\n귀걸이,팔찌,허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        7
+      ],
+      "minuteOfDay": 1320
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 24,
+      "name": "리비티나",
+      "region": "드라카스 화산",
+      "location": "영원한 종속의 예배당",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        2,
+        6
+      ],
+      "minuteOfDay": 1290
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 25,
+      "name": "라카제스",
+      "region": "드라카스 화산",
+      "location": "세크레타의 형벌",
+      "ability": "",
+      "loot": "권갑,검방,전방,단검,석궁\n귀걸이,팔찌,반지",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        1,
+        5
+      ],
+      "minuteOfDay": 1380
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 26,
+      "name": "언두미엘",
+      "region": "비밀 실험실",
+      "location": "실험체 연구실",
+      "ability": "언데믹",
+      "loot": "전투봉,지팡이,단검,활",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1080,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 27,
+      "name": "아라네오",
+      "region": "티리오사 무덤",
+      "location": "티리오사 무덤 지하1층",
+      "ability": "",
+      "loot": "목걸이",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1080,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 28,
+      "name": "장군 아쿨레우스",
+      "region": "티리오사 무덤",
+      "location": "티리오사 무덤 지하2층",
+      "ability": "",
+      "loot": "대검,단검\n허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1320,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 29,
+      "name": "밀라베",
+      "region": "티리오사 무덤",
+      "location": "티리오사 무덤 지하 3층",
+      "ability": "불카누스\n결계형성",
+      "loot": "전투봉,지팡이,석궁\n목걸이,.귀걸이",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        6
+      ],
+      "minuteOfDay": 1110
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 30,
+      "name": "가레스",
+      "region": "죽은 자의 대지",
+      "location": "죽은 자의 대지 1구역",
+      "ability": "",
+      "loot": "권갑,검방,활\n허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1440,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 31,
+      "name": "티토르",
+      "region": "죽은 자의 대지",
+      "location": "죽은 자의 대지 2구역",
+      "ability": "",
+      "loot": "전방,단검,석궁\n목걸이,귀걸이",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1680,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 32,
+      "name": "카테나",
+      "region": "죽은 자의 대지",
+      "location": "죽은 자의 대지 3구역",
+      "ability": "재주",
+      "loot": "권갑,전투봉,지팡이,단검,석궁,\n팔찌,반지",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 1560,
+      "weekdays": [],
+      "minuteOfDay": 0
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 33,
+      "name": "로데릭",
+      "region": "가르바나 지하수로",
+      "location": "가르바나 지하수로 1층",
+      "ability": "로디\n일격필살",
+      "loot": "페르녹스 - \n목걸이.귀걸이,팔지,반지,허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        3
+      ],
+      "minuteOfDay": 1170
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 34,
+      "name": "아우라크",
+      "region": "가르바나 지하수로",
+      "location": "가르바나 지하수로 2층",
+      "ability": "도박",
+      "loot": "오페르타 - \n목걸이.귀걸이,팔지,반지,허리띠",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        4,
+        5
+      ],
+      "minuteOfDay": 1170
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 35,
+      "name": "투미어",
+      "region": "가르바나 지하수로",
+      "location": "가르바나 지하수로 3층",
+      "ability": "솜니옴",
+      "loot": "일리아나 전설~신화 무기\n전설 이닉스 악세",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        7
+      ],
+      "minuteOfDay": 1260
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 36,
+      "name": "카말리아",
+      "region": "숨겨진 실험실",
+      "location": "통제된 연구실",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        3
+      ],
+      "minuteOfDay": 1320
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 37,
+      "name": "익시온",
+      "region": "얼어붙은 대지",
+      "location": "얼어붙은 균열지",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        3
+      ],
+      "minuteOfDay": 1350
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 38,
+      "name": "네루카스",
+      "region": "티리오사 무덤",
+      "location": "티리오사 무덤 지하 4층",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        6
+      ],
+      "minuteOfDay": 1140
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 39,
+      "name": "두멘타",
+      "region": "그림자 숲",
+      "location": "굳은자의 전당",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        5
+      ],
+      "minuteOfDay": 1320
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 40,
+      "name": "헬레나",
+      "region": "검은 마녀의 탑 1층",
+      "location": "검은 마녀의 탑 2층",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        6
+      ],
+      "minuteOfDay": 1380
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 41,
+      "name": "네스트라",
+      "region": "검은 마녀의 탑 1층",
+      "location": "검은 마녀의 탑 2층",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        6
+      ],
+      "minuteOfDay": 1380
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 42,
+      "name": "포가르",
+      "region": "죽은 자의 대지",
+      "location": "죽은 자의 대지 4구역",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        5
+      ],
+      "minuteOfDay": 1290
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 43,
+      "name": "알시",
+      "region": "여인의 호수",
+      "location": "얼어붙은 호수",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        4
+      ],
+      "minuteOfDay": 1350
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 44,
+      "name": "니르반",
+      "region": "용의 둥지",
+      "location": "서광의 요람",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        1
+      ],
+      "minuteOfDay": 1260
+    },
+    {
+      "catalogVersion": 20260911,
+      "id": 45,
+      "name": "에녹스",
+      "region": "침묵의 터",
+      "location": "백골의 안개 지대",
+      "ability": "",
+      "loot": "",
+      "enabled": false,
+      "anchorMs": null,
+      "intervalMinutes": 0,
+      "weekdays": [
+        4
+      ],
+      "minuteOfDay": 1380
+    }
+  ]
+}

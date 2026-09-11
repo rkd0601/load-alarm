@@ -26,7 +26,8 @@ class _BossAlarmPageState extends State<BossAlarmPage>
     controller.addListener(_changed);
     controller.platform.setCutHandler(controller.refresh);
     controller.initialize();
-    timer = Timer.periodic(const Duration(seconds: 1), (_) {
+    timer = Timer.periodic(const Duration(seconds: 1), (tick) {
+      if (tick.tick % 30 == 0) controller.refresh();
       if (mounted) setState(() {});
     });
   }
@@ -61,6 +62,13 @@ class _BossAlarmPageState extends State<BossAlarmPage>
     if (entered != null && mounted) {
       await controller
           .change(boss.update(anchorMs: entered.millisecondsSinceEpoch));
+    }
+  }
+
+  Future<void> _resetAllTimes() async {
+    final entered = await showKillTimeInput(context, resetAll: true);
+    if (entered != null && mounted) {
+      await controller.resetAllTimes(entered);
     }
   }
 
@@ -106,15 +114,26 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                   if (status.isNotEmpty &&
                       (status['allowed'] != true || status['exact'] != true))
                     MaterialBanner(
-                        content: const Text(
-                            '5분 전 알림을 받으려면 알림 및 정확한 알람 권한이 필요합니다. 기기 설정에서 허용해 주세요.'),
+                        content: Text(status['platform'] == 'web'
+                            ? (status['supported'] == true
+                                ? '브라우저 알림을 허용해 주세요. 차단한 경우 사이트 설정에서 변경할 수 있습니다.'
+                                : '이 브라우저에서는 알림을 사용할 수 없습니다. HTTPS 연결과 알림 지원 브라우저가 필요합니다.')
+                            : '5분 전 알림을 받으려면 알림 및 정확한 알람 권한이 필요합니다. 기기 설정에서 허용해 주세요.'),
                         actions: [
                           TextButton(
-                              onPressed: controller.busy
+                              onPressed: controller.busy ||
+                                      status['supported'] == false
                                   ? null
                                   : controller.permissions,
                               child: const Text('권한 설정'))
                         ]),
+                  if (status['platform'] == 'web')
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
+                      child: Text('웹 알림은 이 페이지를 열어 둔 동안 동작합니다. '
+                          '탭을 닫으면 중단되며 백그라운드·절전 상태에서는 지연될 수 있습니다. '
+                          '알림 선택은 이 브라우저에 저장됩니다.'),
+                    ),
                   if (status['platform'] == 'ios')
                     Padding(
                         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
@@ -130,10 +149,10 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                           children: [
                             Text('젠 5분 전 알림 · 모든 시간은 한국 시간',
                                 style: Theme.of(context).textTheme.titleSmall),
-                            Text(controller.cloudStatus,
+                            Text('${controller.cloudStatus} · 30초마다 갱신',
                                 style: Theme.of(context).textTheme.bodySmall),
                             const SizedBox(height: 4),
-                            const Text('필드는 처치 체크부터 주기 반복 · 고정 보스는 요일 유지'),
+                            const Text('처치·시간 수정은 모두에게 공유 · 알림 선택은 이 기기만 적용'),
                             const SizedBox(height: 12),
                             TextField(
                                 onChanged: (v) =>
@@ -169,8 +188,16 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                 icon: const Icon(Icons.notifications_off),
                                 label: const Text('전체 해제'),
                               ),
+                              OutlinedButton.icon(
+                                onPressed:
+                                    controller.busy || controller.bosses.isEmpty
+                                        ? null
+                                        : _resetAllTimes,
+                                icon: const Icon(Icons.restart_alt),
+                                label: const Text('전체 시간 리셋'),
+                              ),
                             ]),
-                            const Text('전체 보스에 적용 · 처치 시간 미설정 필드는 설정 제외'),
+                            const Text('알림 선택만 변경 · 미설정 필드는 전체 시간 리셋 후 예약'),
                           ])),
                   if (controller.busy) const LinearProgressIndicator(),
                   Expanded(
