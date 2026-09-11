@@ -5,11 +5,16 @@ import '../../../core/services/boss_cloud_store.dart';
 import '../domain/boss.dart';
 
 class BossController extends ChangeNotifier {
-  BossController({AlarmPlatform? platform, BossCloudStore? cloud})
+  BossController({
+    AlarmPlatform? platform,
+    BossCloudStore? cloud,
+    this.shareEnabled = false,
+  })
       : platform = platform ?? AlarmPlatform(),
         cloud = cloud ?? FirestoreBossCloudStore();
   final AlarmPlatform platform;
   final BossCloudStore cloud;
+  final bool shareEnabled;
   bool _refreshRequested = false;
   List<String> _cutTokens = [];
   Map<String, Map<String, dynamic>> _pending = {};
@@ -20,6 +25,8 @@ class BossController extends ChangeNotifier {
     'minuteOfDay',
     'anchorMs'
   ];
+  List<String> get _sharedFields =>
+      shareEnabled ? [...timeFields, 'enabled'] : timeFields;
   String? cloudError;
   String get cloudStatus => !cloud.configured
       ? 'Firebase 연결 설정 필요'
@@ -100,7 +107,7 @@ class BossController extends ChangeNotifier {
       final previous = _persisted.where((b) => b.id == boss.id);
       if (previous.isEmpty) continue;
       final old = previous.first.toJson(), updated = boss.toJson();
-      for (final field in timeFields) {
+      for (final field in _sharedFields) {
         if (!mapEquals(
             {'v': jsonEncode(old[field])}, {'v': jsonEncode(updated[field])})) {
           (_pending['${boss.id}'] ??= {})[field] = updated[field];
@@ -133,11 +140,15 @@ class BossController extends ChangeNotifier {
       final remote = await cloud.load().timeout(const Duration(seconds: 8));
       if (remote == null) throw StateError('공통 보스 시간표가 DB에 없습니다.');
       final restored = _readBosses(remote);
-      final enabled = {for (final b in bosses) b.id: b.enabled};
       final before = bosses;
-      bosses = restored
-          .map((b) => b.update(enabled: enabled[b.id] ?? false))
-          .toList();
+      if (shareEnabled) {
+        bosses = restored;
+      } else {
+        final enabled = {for (final b in bosses) b.id: b.enabled};
+        bosses = restored
+            .map((b) => b.update(enabled: enabled[b.id] ?? false))
+            .toList();
+      }
       try {
         await _persist();
       } catch (_) {

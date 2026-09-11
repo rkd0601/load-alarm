@@ -32,5 +32,115 @@ service cloud.firestore {
         && request.resource.data.bosses.size() <= 100
         && request.resource.data.updatedAt == request.time;
     }
+    match /users/{userId} {
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if false;
+      match /fcmTokens/{tokenId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+    match /rooms/{roomId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly([
+          'name', 'world', 'worldName', 'serverNo', 'ownerUid', 'hasPassword',
+          'passwordHash', 'createdAt', 'updatedAt'
+        ])
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.world in ['dien', 'lindriss', 'ulan', 'garbana']
+        && request.resource.data.worldName in ['디엔', '린드리스', '울란', '가르바나']
+        && request.resource.data.serverNo is int
+        && request.resource.data.serverNo >= 1
+        && request.resource.data.serverNo <= 10
+        && request.resource.data.hasPassword is bool
+        && (request.resource.data.passwordHash == null ||
+            request.resource.data.passwordHash is string)
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      allow update: if request.auth != null
+        && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['name', 'updatedAt'])
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 40
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+
+      match /members/{userId} {
+        allow read: if request.auth != null
+          && (request.auth.uid == userId ||
+              resource.data.uid == request.auth.uid ||
+              exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid)));
+        allow create, update: if request.auth != null
+          && request.auth.uid == userId
+          && request.resource.data.keys().hasOnly([
+            'uid', 'displayName', 'role', 'pushEnabled', 'joinedAt', 'updatedAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && (request.resource.data.role == 'member' ||
+              (request.resource.data.role == 'owner' &&
+               getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid))
+          && request.resource.data.pushEnabled is bool
+          && request.resource.data.updatedAt == request.time;
+        allow delete: if request.auth != null && request.auth.uid == userId;
+      }
+
+      match /bossSchedules/{bossId} {
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+        allow create: if request.auth != null
+          && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
+          && request.resource.data.keys().hasAll([
+            'id', 'name', 'region', 'location', 'intervalMinutes',
+            'weekdays', 'minuteOfDay', 'enabled', 'updatedAt', 'updatedBy'
+          ])
+          && request.resource.data.enabled is bool
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.uid;
+        allow update: if request.auth != null
+          && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          && request.resource.data.diff(resource.data).affectedKeys()
+              .hasOnly(['anchorMs', 'intervalMinutes', 'weekdays', 'minuteOfDay', 'enabled', 'updatedAt', 'updatedBy'])
+          && (request.resource.data.anchorMs == null ||
+              (request.resource.data.anchorMs is int && request.resource.data.anchorMs > 0
+               && request.resource.data.anchorMs <= request.time.toMillis()))
+          && request.resource.data.intervalMinutes is int
+          && request.resource.data.intervalMinutes >= 0
+          && request.resource.data.intervalMinutes <= 525600
+          && request.resource.data.weekdays is list
+          && request.resource.data.weekdays.size() <= 7
+          && request.resource.data.weekdays.hasOnly([1, 2, 3, 4, 5, 6, 7])
+          && (request.resource.data.weekdays.size() > 0 || request.resource.data.intervalMinutes > 5)
+          && request.resource.data.minuteOfDay is int
+          && request.resource.data.minuteOfDay >= 0 && request.resource.data.minuteOfDay < 1440
+          && (!request.resource.data.keys().hasAny(['enabled']) ||
+              request.resource.data.enabled is bool)
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.updatedBy == request.auth.uid;
+        allow delete: if false;
+      }
+
+      match /messages/{messageId} {
+        allow read: if request.auth != null
+          && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+        allow create: if request.auth != null
+          && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid))
+          && request.resource.data.keys().hasOnly([
+            'uid', 'displayName', 'text', 'type', 'createdAt'
+          ])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.text.size() > 0
+          && request.resource.data.text.size() <= 500
+          && request.resource.data.type in ['text', 'system', 'boss_update']
+          && request.resource.data.createdAt == request.time;
+        allow update, delete: if false;
+      }
+    }
   }
 }

@@ -5,8 +5,17 @@ import '../domain/boss.dart';
 import 'kill_time_input.dart';
 
 class BossAlarmPage extends StatefulWidget {
-  const BossAlarmPage({super.key, this.controller});
+  const BossAlarmPage({
+    super.key,
+    this.controller,
+    this.title,
+    this.subtitle,
+    this.embedded = false,
+  });
   final BossController? controller;
+  final String? title;
+  final String? subtitle;
+  final bool embedded;
   @override
   State<BossAlarmPage> createState() => _BossAlarmPageState();
 }
@@ -90,14 +99,7 @@ class _BossAlarmPageState extends State<BossAlarmPage>
       return at.compareTo(bt);
     });
     final status = controller.status;
-    return Scaffold(
-      appBar: AppBar(title: const Text('로드나인 보스 알림'), actions: [
-        IconButton(
-            onPressed: controller.busy ? null : controller.refresh,
-            tooltip: 'DB 동기화 및 알림 다시 예약',
-            icon: const Icon(Icons.refresh)),
-      ]),
-      body: SafeArea(
+    final body = SafeArea(
           child: controller.loading
               ? const Center(child: CircularProgressIndicator())
               : Column(children: [
@@ -329,7 +331,26 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                               ]),
                                             ])));
                               })),
-                ])),
+                ]));
+    if (widget.embedded) return body;
+    return Scaffold(
+      appBar: AppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(widget.title ?? '로드나인 보스 알림'),
+              if (widget.subtitle != null)
+                Text(widget.subtitle!,
+                    style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+          actions: [
+            IconButton(
+                onPressed: controller.busy ? null : controller.refresh,
+                tooltip: 'DB 동기화 및 알림 다시 예약',
+                icon: const Icon(Icons.refresh)),
+          ]),
+      body: body,
     );
   }
 }
