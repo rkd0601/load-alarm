@@ -92,18 +92,17 @@ class _BossAlarmPageState extends State<BossAlarmPage>
             '${b.name} ${b.region} ${b.location}'.contains(search))
         .toList();
     list.sort((a, b) {
-      final au = a.unconfirmedSpawn(now), bu = b.unconfirmedSpawn(now);
-      if (au != null && bu != null) return au.compareTo(bu);
-      if (au != null) return -1;
-      if (bu != null) return 1;
       final at = a.nextSpawn(now), bt = b.nextSpawn(now);
       if (at == null && bt == null) return a.id.compareTo(b.id);
       if (at == null) return 1;
       if (bt == null) return -1;
       return at.compareTo(bt);
     });
-    final unconfirmedBosses =
-        list.where((boss) => boss.unconfirmedSpawn(now) != null).toList();
+    final unconfirmedBosses = controller.bosses
+        .where((boss) => boss.unconfirmedSpawn(now) != null)
+        .toList()
+      ..sort((a, b) =>
+          a.unconfirmedSpawn(now)!.compareTo(b.unconfirmedSpawn(now)!));
     final status = controller.status;
     final body = SafeArea(
         child: controller.loading
@@ -195,37 +194,23 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                   ),
                                 ]),
                                 const SizedBox(height: 8),
-                                Row(children: [
-                                  Expanded(
-                                      child: TextField(
-                                          onChanged: (v) =>
-                                              setState(() => search = v.trim()),
-                                          decoration: const InputDecoration(
-                                              isDense: true,
-                                              prefixIcon: Icon(Icons.search),
-                                              hintText: '보스명 또는 지역 검색',
-                                              border: OutlineInputBorder()))),
-                                  const SizedBox(width: 8),
-                                  PopupMenuButton<int>(
-                                    tooltip: '필터',
-                                    initialValue: filter,
-                                    onSelected: (value) =>
-                                        setState(() => filter = value),
-                                    itemBuilder: (context) => [
-                                      for (var i = 0; i < 3; i++)
-                                        PopupMenuItem(
-                                            value: i,
-                                            child: Text([
-                                              '전체 45',
-                                              '필드 22',
-                                              '고정 23'
-                                            ][i])),
-                                    ],
-                                    child: InputChip(
-                                      avatar: const Icon(Icons.filter_list),
-                                      label: Text(['전체', '필드', '고정'][filter]),
-                                    ),
-                                  ),
+                                TextField(
+                                    onChanged: (v) =>
+                                        setState(() => search = v.trim()),
+                                    decoration: const InputDecoration(
+                                        isDense: true,
+                                        prefixIcon: Icon(Icons.search),
+                                        hintText: '보스명 또는 지역 검색',
+                                        border: OutlineInputBorder())),
+                                const SizedBox(height: 8),
+                                Wrap(spacing: 8, runSpacing: 4, children: [
+                                  for (var i = 0; i < 3; i++)
+                                    ChoiceChip(
+                                        label: Text(
+                                            ['전체 45', '필드 22', '고정 23'][i]),
+                                        selected: filter == i,
+                                        onSelected: (_) =>
+                                            setState(() => filter = i)),
                                 ]),
                                 if (unconfirmedBosses.isNotEmpty) ...[
                                   const SizedBox(height: 12),
