@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Returns a UTC instant; entered calendar values always mean Korean time.
@@ -5,8 +6,25 @@ Future<DateTime?> showKillTimeInput(BuildContext context,
         {int? anchorMs, bool resetAll = false}) =>
     showDialog<DateTime>(
       context: context,
-      builder: (_) => _KillTimeInput(anchorMs: anchorMs, resetAll: resetAll),
+      builder: (_) => _WebKeyboardStableDialog(
+        child: _KillTimeInput(anchorMs: anchorMs, resetAll: resetAll),
+      ),
     );
+
+class _WebKeyboardStableDialog extends StatelessWidget {
+  const _WebKeyboardStableDialog({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!kIsWeb) return child;
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(viewInsets: EdgeInsets.zero),
+      child: child,
+    );
+  }
+}
 
 class _KillTimeInput extends StatefulWidget {
   const _KillTimeInput({this.anchorMs, this.resetAll = false});
@@ -93,6 +111,7 @@ class _KillTimeInputState extends State<_KillTimeInput> {
             const SizedBox(height: 16),
             TextField(
               key: const ValueKey('kill-date'),
+              scrollPadding: EdgeInsets.zero,
               controller: date,
               keyboardType: TextInputType.datetime,
               decoration: InputDecoration(
@@ -102,6 +121,7 @@ class _KillTimeInputState extends State<_KillTimeInput> {
             const SizedBox(height: 12),
             TextField(
               key: const ValueKey('kill-time'),
+              scrollPadding: EdgeInsets.zero,
               controller: time,
               keyboardType: TextInputType.datetime,
               decoration: InputDecoration(

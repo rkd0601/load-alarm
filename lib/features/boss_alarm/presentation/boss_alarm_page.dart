@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../application/boss_controller.dart';
 import '../domain/boss.dart';
@@ -578,69 +579,77 @@ class _BossEditorState extends State<_BossEditor> {
   }
 
   @override
-  Widget build(BuildContext context) => AlertDialog(
-        title: Text('${widget.boss.name} 시간 설정'),
-        content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (widget.boss.isFixed) ...[
-            const Text('고정 젠 요일 · 한국 시간'),
-            Wrap(spacing: 4, children: [
-              for (var d = 1; d <= 7; d++)
-                FilterChip(
-                    label: Text(['월', '화', '수', '목', '금', '토', '일'][d - 1]),
-                    selected: days.contains(d),
-                    onSelected: (value) => setState(() {
-                          if (value) {
-                            days.add(d);
-                          } else {
-                            days.remove(d);
-                          }
-                        })),
-            ]),
-            TextButton(
-                onPressed: () async {
-                  final value = await showTimePicker(
-                      context: context, initialTime: fixedTime);
-                  if (value != null && mounted) {
-                    setState(() => fixedTime = value);
-                  }
-                },
-                child: Text(
-                    '젠 시간 ${fixedTime.hour.toString().padLeft(2, '0')}:${fixedTime.minute.toString().padLeft(2, '0')}')),
-          ] else ...[
-            Row(children: [
-              Expanded(
-                  child: TextField(
-                      controller: hours,
-                      keyboardType: TextInputType.number,
-                      decoration:
-                          const InputDecoration(labelText: '젠 주기 (시간)'))),
-              const SizedBox(width: 12),
-              Expanded(
-                  child: TextField(
-                      controller: minutes,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: '분'))),
-            ]),
-            const SizedBox(height: 12),
-            TextButton(
-                onPressed: pickAnchor,
-                child: Text('기준 처치 ${koreaTime(anchor)} 수정')),
-            const Text('체크하지 않으면 이 시각을 기준으로 젠 주기만큼 자동 연장됩니다.'),
-          ],
-          SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('5분 전 알림'),
-              value: enabled,
-              onChanged: (value) => setState(() => enabled = value)),
-          if (error != null)
-            Text(error!,
-                style: TextStyle(color: Theme.of(context).colorScheme.error)),
-        ])),
-        actions: [
+  Widget build(BuildContext context) {
+    final dialog = AlertDialog(
+      title: Text('${widget.boss.name} 시간 설정'),
+      content: SingleChildScrollView(
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+        if (widget.boss.isFixed) ...[
+          const Text('고정 젠 요일 · 한국 시간'),
+          Wrap(spacing: 4, children: [
+            for (var d = 1; d <= 7; d++)
+              FilterChip(
+                  label: Text(['월', '화', '수', '목', '금', '토', '일'][d - 1]),
+                  selected: days.contains(d),
+                  onSelected: (value) => setState(() {
+                        if (value) {
+                          days.add(d);
+                        } else {
+                          days.remove(d);
+                        }
+                      })),
+          ]),
           TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('취소')),
-          FilledButton(onPressed: save, child: const Text('저장')),
+              onPressed: () async {
+                final value = await showTimePicker(
+                    context: context, initialTime: fixedTime);
+                if (value != null && mounted) {
+                  setState(() => fixedTime = value);
+                }
+              },
+              child: Text(
+                  '젠 시간 ${fixedTime.hour.toString().padLeft(2, '0')}:${fixedTime.minute.toString().padLeft(2, '0')}')),
+        ] else ...[
+          Row(children: [
+            Expanded(
+                child: TextField(
+                    scrollPadding: EdgeInsets.zero,
+                    controller: hours,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: '젠 주기 (시간)'))),
+            const SizedBox(width: 12),
+            Expanded(
+                child: TextField(
+                    scrollPadding: EdgeInsets.zero,
+                    controller: minutes,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(labelText: '분'))),
+          ]),
+          const SizedBox(height: 12),
+          TextButton(
+              onPressed: pickAnchor,
+              child: Text('기준 처치 ${koreaTime(anchor)} 수정')),
+          const Text('체크하지 않으면 이 시각을 기준으로 젠 주기만큼 자동 연장됩니다.'),
         ],
-      );
+        SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('5분 전 알림'),
+            value: enabled,
+            onChanged: (value) => setState(() => enabled = value)),
+        if (error != null)
+          Text(error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error)),
+      ])),
+      actions: [
+        TextButton(
+            onPressed: () => Navigator.pop(context), child: const Text('취소')),
+        FilledButton(onPressed: save, child: const Text('저장')),
+      ],
+    );
+    if (!kIsWeb) return dialog;
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(viewInsets: EdgeInsets.zero),
+      child: dialog,
+    );
+  }
 }
