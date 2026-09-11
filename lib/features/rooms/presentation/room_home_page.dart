@@ -17,6 +17,7 @@ class RoomHomePage extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        resizeToAvoidBottomInset: true,
         appBar: AppBar(
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -140,8 +141,9 @@ class _RoomChatState extends State<_RoomChat> {
         ),
         SafeArea(
           top: false,
+          minimum: const EdgeInsets.only(bottom: 8),
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+            padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
             child: Row(
               children: [
                 Expanded(
