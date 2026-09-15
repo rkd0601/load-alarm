@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../application/boss_controller.dart';
+import '../domain/alarm_settings.dart';
 import '../domain/boss.dart';
 import 'kill_time_input.dart';
 
@@ -62,12 +63,14 @@ class _BossAlarmPageState extends State<BossAlarmPage>
   }
 
   Future<void> _edit(Boss boss) async {
+    if (!controller.canEditSharedSettings) return;
     final updated = await showDialog<Boss>(
         context: context, builder: (_) => _BossEditor(boss: boss));
     if (updated != null && mounted) await controller.change(updated);
   }
 
   Future<void> _inputKillTime(Boss boss) async {
+    if (!controller.canEditSharedSettings) return;
     final entered = await showKillTimeInput(context, anchorMs: boss.anchorMs);
     if (entered != null && mounted) {
       await controller
@@ -76,9 +79,20 @@ class _BossAlarmPageState extends State<BossAlarmPage>
   }
 
   Future<void> _resetAllTimes() async {
+    if (!controller.canEditSharedSettings) return;
     final entered = await showKillTimeInput(context, resetAll: true);
     if (entered != null && mounted) {
       await controller.resetAllTimes(entered);
+    }
+  }
+
+  Future<void> _editAlarmSettings() async {
+    final updated = await showDialog<AlarmSettings>(
+      context: context,
+      builder: (_) => _AlarmSettingsDialog(settings: controller.alarmSettings),
+    );
+    if (updated != null && mounted) {
+      await controller.updateAlarmSettings(updated);
     }
   }
 
@@ -186,13 +200,22 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                     icon: const Icon(Icons.notifications_off),
                                   ),
                                   IconButton(
-                                    tooltip: '전체 시간 리셋',
+                                    tooltip: '개인 알림 시간 설정',
                                     onPressed: controller.busy ||
                                             controller.bosses.isEmpty
                                         ? null
-                                        : _resetAllTimes,
-                                    icon: const Icon(Icons.restart_alt),
+                                        : _editAlarmSettings,
+                                    icon: const Icon(Icons.do_not_disturb_on),
                                   ),
+                                  if (controller.canEditSharedSettings)
+                                    IconButton(
+                                      tooltip: '전체 시간 리셋',
+                                      onPressed: controller.busy ||
+                                              controller.bosses.isEmpty
+                                          ? null
+                                          : _resetAllTimes,
+                                      icon: const Icon(Icons.restart_alt),
+                                    ),
                                 ]),
                                 const SizedBox(height: 8),
                                 TextField(
@@ -282,25 +305,27 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                                                       color: colorScheme
                                                                           .onErrorContainer)),
                                                               const Spacer(),
-                                                              Row(children: [
-                                                                TextButton(
-                                                                    onPressed: controller
-                                                                            .busy
-                                                                        ? null
-                                                                        : () => controller.change(boss.update(
-                                                                            anchorMs: DateTime.now()
-                                                                                .millisecondsSinceEpoch)),
-                                                                    child: const Text(
-                                                                        '지금 컷')),
-                                                                TextButton(
-                                                                    onPressed: controller
-                                                                            .busy
-                                                                        ? null
-                                                                        : () => _inputKillTime(
-                                                                            boss),
-                                                                    child: const Text(
-                                                                        '시간 입력')),
-                                                              ]),
+                                                              if (controller
+                                                                  .canEditSharedSettings)
+                                                                Row(children: [
+                                                                  TextButton(
+                                                                      onPressed: controller
+                                                                              .busy
+                                                                          ? null
+                                                                          : () => controller.change(boss.update(
+                                                                              anchorMs: DateTime.now()
+                                                                                  .millisecondsSinceEpoch)),
+                                                                      child: const Text(
+                                                                          '지금 컷')),
+                                                                  TextButton(
+                                                                      onPressed: controller
+                                                                              .busy
+                                                                          ? null
+                                                                          : () => _inputKillTime(
+                                                                              boss),
+                                                                      child: const Text(
+                                                                          '시간 입력')),
+                                                                ]),
                                                             ]))));
                                           })),
                                 ],
@@ -351,6 +376,8 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                                   ? null
                                                   : (value) {
                                                       if (value &&
+                                                          controller
+                                                              .canEditSharedSettings &&
                                                           !boss.isFixed &&
                                                           boss.anchorMs ==
                                                               null) {
@@ -418,7 +445,8 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                           const Text(
                                               '이번 젠의 5분 전 시각은 지났습니다. 다음 알림 대상은 다음 주기입니다.'),
                                         Wrap(spacing: 8, children: [
-                                          if (!boss.isFixed)
+                                          if (!boss.isFixed &&
+                                              controller.canEditSharedSettings)
                                             TextButton.icon(
                                                 onPressed: controller.busy
                                                     ? null
@@ -429,7 +457,8 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                                                 .millisecondsSinceEpoch)),
                                                 icon: const Icon(Icons.check),
                                                 label: const Text('지금 처치 체크')),
-                                          if (!boss.isFixed)
+                                          if (!boss.isFixed &&
+                                              controller.canEditSharedSettings)
                                             TextButton.icon(
                                               onPressed: controller.busy
                                                   ? null
@@ -438,13 +467,14 @@ class _BossAlarmPageState extends State<BossAlarmPage>
                                                   Icons.edit_calendar_outlined),
                                               label: const Text('처치 시간 입력'),
                                             ),
-                                          TextButton.icon(
-                                              onPressed: controller.busy
-                                                  ? null
-                                                  : () => _edit(boss),
-                                              icon: const Icon(
-                                                  Icons.edit_outlined),
-                                              label: const Text('시간 설정')),
+                                          if (controller.canEditSharedSettings)
+                                            TextButton.icon(
+                                                onPressed: controller.busy
+                                                    ? null
+                                                    : () => _edit(boss),
+                                                icon: const Icon(
+                                                    Icons.edit_outlined),
+                                                label: const Text('시간 설정')),
                                           if (boss.ability.isNotEmpty ||
                                               boss.loot.isNotEmpty)
                                             TextButton(
@@ -652,4 +682,94 @@ class _BossEditorState extends State<_BossEditor> {
       child: dialog,
     );
   }
+}
+
+class _AlarmSettingsDialog extends StatefulWidget {
+  const _AlarmSettingsDialog({required this.settings});
+
+  final AlarmSettings settings;
+
+  @override
+  State<_AlarmSettingsDialog> createState() => _AlarmSettingsDialogState();
+}
+
+class _AlarmSettingsDialogState extends State<_AlarmSettingsDialog> {
+  late bool quietEnabled;
+  late TimeOfDay start;
+  late TimeOfDay end;
+
+  @override
+  void initState() {
+    super.initState();
+    quietEnabled = widget.settings.quietEnabled;
+    start = TimeOfDay(
+      hour: widget.settings.quietStartMinute ~/ 60,
+      minute: widget.settings.quietStartMinute % 60,
+    );
+    end = TimeOfDay(
+      hour: widget.settings.quietEndMinute ~/ 60,
+      minute: widget.settings.quietEndMinute % 60,
+    );
+  }
+
+  int _minutes(TimeOfDay time) => time.hour * 60 + time.minute;
+
+  Future<void> _pickStart() async {
+    final value = await showTimePicker(context: context, initialTime: start);
+    if (value != null && mounted) setState(() => start = value);
+  }
+
+  Future<void> _pickEnd() async {
+    final value = await showTimePicker(context: context, initialTime: end);
+    if (value != null && mounted) setState(() => end = value);
+  }
+
+  @override
+  Widget build(BuildContext context) => AlertDialog(
+        title: const Text('개인 알림 시간 설정'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('특정 시간 알림 끄기'),
+              subtitle: const Text('한국 시간 기준이며 내 계정에만 적용됩니다.'),
+              value: quietEnabled,
+              onChanged: (value) => setState(() => quietEnabled = value),
+            ),
+            const SizedBox(height: 8),
+            Row(children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: quietEnabled ? _pickStart : null,
+                  child: Text('시작 ${minuteOfDayLabel(_minutes(start))}'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: quietEnabled ? _pickEnd : null,
+                  child: Text('종료 ${minuteOfDayLabel(_minutes(end))}'),
+                ),
+              ),
+            ]),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('취소')),
+          FilledButton(
+            onPressed: () => Navigator.pop(
+              context,
+              widget.settings.update(
+                quietEnabled: quietEnabled,
+                quietStartMinute: _minutes(start),
+                quietEndMinute: _minutes(end),
+              ),
+            ),
+            child: const Text('저장'),
+          ),
+        ],
+      );
 }

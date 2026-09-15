@@ -7,6 +7,7 @@ import 'package:lordnine_boss_alarm/app/app.dart';
 import 'package:lordnine_boss_alarm/core/services/alarm_platform.dart';
 import 'package:lordnine_boss_alarm/core/services/boss_cloud_store.dart';
 import 'package:lordnine_boss_alarm/features/boss_alarm/application/boss_controller.dart';
+import 'package:lordnine_boss_alarm/features/boss_alarm/domain/alarm_settings.dart';
 
 Map<String, dynamic> fixture() =>
     jsonDecode(File('test/fixtures/boss_catalog.json').readAsStringSync())
@@ -29,12 +30,24 @@ class FakeBossCloudStore implements BossCloudStore {
   @override
   Future<void> save(Map<String, dynamic> value) async {
     if (fail) throw StateError('offline');
-    writes++;
+    var sharedWrite = false;
     for (final entry in (value['changes'] as Map).entries) {
+      final fields = Map<String, dynamic>.from(entry.value as Map);
+      fields.remove('enabled');
+      if (fields.isEmpty) continue;
+      sharedWrite = true;
       final row = (document!['bosses'] as List)
           .firstWhere((b) => '${b['id']}' == entry.key) as Map;
-      row.addAll(entry.value as Map);
+      row.addAll(fields);
     }
+    if (sharedWrite) writes++;
+  }
+
+  @override
+  Future<void> saveAlarmSettings(AlarmSettings settings) async {
+    if (fail) throw StateError('offline');
+    document ??= fixture();
+    document!['alarmSettings'] = settings.toJson();
   }
 }
 

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import '../../../core/services/alarm_platform.dart';
 import '../../../core/services/boss_cloud_store.dart';
+import '../domain/alarm_settings.dart';
 import '../domain/boss.dart';
 
 class BossController extends ChangeNotifier {
@@ -9,16 +10,18 @@ class BossController extends ChangeNotifier {
     AlarmPlatform? platform,
     BossCloudStore? cloud,
     this.shareEnabled = false,
-  })
-      : platform = platform ?? AlarmPlatform(),
+    this.canEditSharedSettings = true,
+  })  : platform = platform ?? AlarmPlatform(),
         cloud = cloud ?? FirestoreBossCloudStore();
   final AlarmPlatform platform;
   final BossCloudStore cloud;
   final bool shareEnabled;
+  final bool canEditSharedSettings;
   bool _refreshRequested = false;
   List<String> _cutTokens = [];
   Map<String, Map<String, dynamic>> _pending = {};
   List<Boss> _persisted = [];
+  AlarmSettings alarmSettings = const AlarmSettings();
   static const timeFields = [
     'intervalMinutes',
     'weekdays',
@@ -26,7 +29,7 @@ class BossController extends ChangeNotifier {
     'anchorMs'
   ];
   List<String> get _sharedFields =>
-      shareEnabled ? [...timeFields, 'enabled'] : timeFields;
+      canEditSharedSettings ? [...timeFields, 'enabled'] : ['enabled'];
   String? cloudError;
   String get cloudStatus => !cloud.configured
       ? 'Firebase 연결 설정 필요'
@@ -66,6 +69,8 @@ class BossController extends ChangeNotifier {
         final document = jsonDecode(stored) as Map<String, dynamic>;
         bosses = _readBosses(document);
         _persisted = bosses;
+        alarmSettings = AlarmSettings.fromJson(
+            document['alarmSettings'] as Map<String, dynamic>?);
         // Never publish old per-user schedules into the shared database.
         if (document['sharedVersion'] == 1) {
           _pending = (document['pendingChanges'] as Map? ?? {}).map((k, v) =>
@@ -95,6 +100,7 @@ class BossController extends ChangeNotifier {
       'sharedVersion': 1,
       'bosses': bosses.map((b) => b.toJson()).toList(),
       'pendingChanges': _pending,
+      'alarmSettings': alarmSettings.toJson(),
     }));
     _persisted = bosses;
   }
@@ -142,8 +148,11 @@ class BossController extends ChangeNotifier {
       if (remote == null) throw StateError('공통 보스 시간표가 DB에 없습니다.');
       final restored = _readBosses(remote);
       final before = bosses;
+      final remoteSettings = AlarmSettings.fromJson(
+          remote['alarmSettings'] as Map<String, dynamic>?);
       if (shareEnabled) {
         bosses = restored;
+        alarmSettings = remoteSettings;
       } else {
         final enabled = {for (final b in bosses) b.id: b.enabled};
         bosses = restored
@@ -231,6 +240,10 @@ class BossController extends ChangeNotifier {
       for (var i = 0; i < 65; i++) {
         final alarm = boss.nextAlarm(cursor);
         if (alarm == null) break;
+        if (alarmSettings.mutedAt(alarm)) {
+          cursor = alarm;
+          continue;
+        }
         events.add({
           'id': boss.id,
           'name': boss.name,
@@ -287,9 +300,39 @@ class BossController extends ChangeNotifier {
     await _changeAll(bosses.map((b) => b.update(enabled: enabled)).toList());
   }
 
+  Future<void> updateAlarmSettings(AlarmSettings settings) async {
+    if (busy || loading) return;
+    busy = true;
+    error = null;
+    notifyListeners();
+    final before = alarmSettings;
+    alarmSettings = settings;
+    try {
+      await _persist();
+      await cloud
+          .saveAlarmSettings(settings)
+          .timeout(const Duration(seconds: 8));
+      await _sync();
+      cloudError = null;
+    } catch (e) {
+      alarmSettings = before;
+      error = '개인 알림 설정 저장에 실패했습니다. 다시 시도해 주세요. ($e)';
+      cloudError = '$e';
+    } finally {
+      busy = false;
+      notifyListeners();
+      _resumeRefresh();
+    }
+  }
+
   Future<void> resetAllTimes(DateTime reference) async {
     if (reference.isAfter(DateTime.now())) {
       error = '리셋 기준 시간은 현재보다 미래일 수 없습니다.';
+      notifyListeners();
+      return;
+    }
+    if (!canEditSharedSettings) {
+      error = '방장 또는 설정 편집자만 시간을 변경할 수 있습니다.';
       notifyListeners();
       return;
     }
@@ -316,6 +359,21 @@ class BossController extends ChangeNotifier {
         // Otherwise a failed reset sync could replay those cuts on restart.
         if (_cutTokens.isNotEmpty) await _sync();
         before = bosses;
+      }
+      if (!canEditSharedSettings) {
+        final timeById = {for (final b in bosses) b.id: b};
+        for (final boss in updated) {
+          final previous = timeById[boss.id];
+          if (previous == null) continue;
+          final old = previous.toJson();
+          final next = boss.toJson();
+          for (final field in timeFields) {
+            if (!mapEquals({'v': jsonEncode(old[field])},
+                {'v': jsonEncode(next[field])})) {
+              throw StateError('방장 또는 설정 편집자만 시간을 변경할 수 있습니다.');
+            }
+          }
+        }
       }
       bosses = updated;
       try {

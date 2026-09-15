@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../../core/services/firebase_app_service.dart';
 import '../domain/game_server.dart';
 import '../domain/room.dart';
+import '../domain/room_member.dart';
 
 class RoomService {
   RoomService({
@@ -98,8 +99,17 @@ class RoomService {
     if (user == null) throw StateError('로그인이 필요합니다.');
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) throw StateError('방 이름을 입력해 주세요.');
+    final owned = await _db
+        .collection('rooms')
+        .where('ownerUid', isEqualTo: user.uid)
+        .limit(1)
+        .get();
+    if (owned.docs.isNotEmpty) {
+      throw StateError('방은 계정당 1개만 생성할 수 있습니다.');
+    }
     final room = _db.collection('rooms').doc();
     final hasPassword = password.trim().isNotEmpty;
+    final createdMs = DateTime.now().millisecondsSinceEpoch;
     final now = FieldValue.serverTimestamp();
     final batch = _db.batch();
     batch.set(room, {
@@ -123,13 +133,26 @@ class RoomService {
     });
     final schedules = await _db.collection('bossSchedules').get();
     for (final doc in schedules.docs) {
+      final data = {...doc.data()};
+      final weekdays = data['weekdays'];
+      if (weekdays is List && weekdays.isEmpty) {
+        data['anchorMs'] = createdMs;
+      }
+      data.remove('enabled');
       batch.set(room.collection('bossSchedules').doc(doc.id), {
-        ...doc.data(),
-        'enabled': false,
+        ...data,
         'updatedAt': now,
         'updatedBy': user.uid,
       });
     }
+    batch.set(room.collection('memberSettings').doc(user.uid), {
+      'uid': user.uid,
+      'enabledBosses': {},
+      'quietEnabled': false,
+      'quietStartMinute': 0,
+      'quietEndMinute': 0,
+      'updatedAt': now,
+    });
     await batch.commit();
     return BossRoom(
       id: room.id,
@@ -153,14 +176,93 @@ class RoomService {
         data['passwordHash'] != _passwordHash(room.id, password)) {
       throw StateError('방 비밀번호가 맞지 않습니다.');
     }
-    await snapshot.reference.collection('members').doc(user.uid).set({
-      'uid': user.uid,
-      'displayName': user.displayName ?? user.email ?? '사용자',
-      'role': data['ownerUid'] == user.uid ? 'owner' : 'member',
-      'pushEnabled': true,
-      'joinedAt': FieldValue.serverTimestamp(),
+    final existingSettings = await snapshot.reference
+        .collection('memberSettings')
+        .doc(user.uid)
+        .get();
+    final batch = _db.batch();
+    batch.set(
+        snapshot.reference.collection('members').doc(user.uid),
+        {
+          'uid': user.uid,
+          'displayName': user.displayName ?? user.email ?? '사용자',
+          'role': data['ownerUid'] == user.uid ? 'owner' : 'member',
+          'pushEnabled': true,
+          'joinedAt': FieldValue.serverTimestamp(),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+        SetOptions(merge: true));
+    if (!existingSettings.exists) {
+      batch.set(snapshot.reference.collection('memberSettings').doc(user.uid), {
+        'uid': user.uid,
+        'enabledBosses': {},
+        'quietEnabled': false,
+        'quietStartMinute': 0,
+        'quietEndMinute': 0,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  Stream<RoomMember?> myMember(String roomId) {
+    final user = _auth.currentUser;
+    if (user == null) return const Stream<RoomMember?>.empty();
+    return _db
+        .collection('rooms')
+        .doc(roomId)
+        .collection('members')
+        .doc(user.uid)
+        .snapshots()
+        .map((doc) =>
+            doc.data() == null ? null : RoomMember.fromJson(doc.data()!));
+  }
+
+  Stream<List<RoomMember>> members(String roomId) {
+    return _db
+        .collection('rooms')
+        .doc(roomId)
+        .collection('members')
+        .orderBy('joinedAt')
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => RoomMember.fromJson(doc.data()))
+            .toList());
+  }
+
+  Future<void> setMemberRole(String roomId, String uid, String role) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('로그인이 필요합니다.');
+    if (!['member', 'editor'].contains(role)) {
+      throw StateError('설정할 수 없는 권한입니다.');
+    }
+    await _db
+        .collection('rooms')
+        .doc(roomId)
+        .collection('members')
+        .doc(uid)
+        .update({
+      'role': role,
       'updatedAt': FieldValue.serverTimestamp(),
-    }, SetOptions(merge: true));
+    });
+  }
+
+  Future<void> transferOwner(String roomId, String uid) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('로그인이 필요합니다.');
+    final room = _db.collection('rooms').doc(roomId);
+    final batch = _db.batch();
+    batch.update(
+        room, {'ownerUid': uid, 'updatedAt': FieldValue.serverTimestamp()});
+    batch.update(room.collection('members').doc(user.uid), {
+      'role': 'editor',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    batch.update(room.collection('members').doc(uid), {
+      'role': 'owner',
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
+    await batch.commit();
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> messages(String roomId) {
