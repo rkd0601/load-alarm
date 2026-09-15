@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import '../../../core/services/firebase_app_service.dart';
+import '../domain/app_popup.dart';
 import '../domain/game_server.dart';
 import '../domain/room.dart';
 import '../domain/room_member.dart';
@@ -56,6 +57,15 @@ class RoomService {
     }, SetOptions(merge: true));
   }
 
+  Stream<AppPopup?> activePopup() {
+    return _db.collection('appPopups').doc('current').snapshots().map((doc) {
+      final data = doc.data();
+      if (data == null) return null;
+      final popup = AppPopup.fromJson(doc.id, data);
+      return popup.visible ? popup : null;
+    });
+  }
+
   Stream<List<BossRoom>> rooms() {
     return _db
         .collection('rooms')
@@ -91,6 +101,7 @@ class RoomService {
 
   Future<BossRoom> createRoom({
     required String name,
+    required String title,
     required GameServer server,
     required String password,
   }) async {
@@ -98,7 +109,9 @@ class RoomService {
     final user = _auth.currentUser;
     if (user == null) throw StateError('로그인이 필요합니다.');
     final trimmedName = name.trim();
+    final trimmedTitle = title.trim().isEmpty ? trimmedName : title.trim();
     if (trimmedName.isEmpty) throw StateError('방 이름을 입력해 주세요.');
+    if (trimmedTitle.length > 60) throw StateError('방제는 60자 이하로 입력해 주세요.');
     final owned = await _db
         .collection('rooms')
         .where('ownerUid', isEqualTo: user.uid)
@@ -114,6 +127,7 @@ class RoomService {
     final batch = _db.batch();
     batch.set(room, {
       'name': trimmedName,
+      'title': trimmedTitle,
       'world': server.world.id,
       'worldName': server.world.name,
       'serverNo': server.number,
@@ -157,6 +171,7 @@ class RoomService {
     return BossRoom(
       id: room.id,
       name: trimmedName,
+      title: trimmedTitle,
       world: server.world.id,
       worldName: server.world.name,
       serverNo: server.number,

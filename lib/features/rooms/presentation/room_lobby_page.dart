@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 
 import '../application/room_service.dart';
+import '../domain/app_popup.dart';
 import '../domain/game_server.dart';
 import '../domain/room.dart';
 import 'room_home_page.dart';
 
-class RoomLobbyPage extends StatelessWidget {
+class RoomLobbyPage extends StatefulWidget {
   const RoomLobbyPage({super.key, required this.service});
 
   final RoomService service;
+
+  @override
+  State<RoomLobbyPage> createState() => _RoomLobbyPageState();
+}
+
+class _RoomLobbyPageState extends State<RoomLobbyPage> {
+  static final Set<String> _shownPopupVersions = <String>{};
+  String search = '';
+
+  RoomService get service => widget.service;
 
   Future<void> _create(BuildContext context) async {
     final room = await showDialog<BossRoom>(
@@ -45,6 +56,36 @@ class RoomLobbyPage extends StatelessWidget {
     ));
   }
 
+  List<BossRoom> _filterRooms(List<BossRoom> rooms) {
+    final keyword = search.trim();
+    if (keyword.isEmpty) return rooms;
+    return rooms
+        .where((room) => '${room.displayTitle} ${room.name} ${room.serverLabel}'
+            .contains(keyword))
+        .toList();
+  }
+
+  void _maybeShowPopup(BuildContext context, AppPopup? popup) {
+    if (popup == null || _shownPopupVersions.contains(popup.version)) return;
+    _shownPopupVersions.add(popup.version);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text(popup.title),
+          content: Text(popup.message),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('확인'),
+            ),
+          ],
+        ),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = service.currentUser;
@@ -64,72 +105,88 @@ class RoomLobbyPage extends StatelessWidget {
         icon: const Icon(Icons.add),
         label: const Text('방 만들기'),
       ),
-      body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
-          children: [
-            Text(
-              user?.displayName?.isNotEmpty == true
-                  ? '${user!.displayName}님'
-                  : user?.email ?? '',
-              style: Theme.of(context).textTheme.titleMedium,
+      body: StreamBuilder(
+        stream: service.activePopup(),
+        builder: (context, popupSnapshot) {
+          _maybeShowPopup(context, popupSnapshot.data);
+          return SafeArea(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 96),
+              children: [
+                Text(
+                  user?.displayName?.isNotEmpty == true
+                      ? '${user!.displayName}님'
+                      : user?.email ?? '',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  onChanged: (value) => setState(() => search = value),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    prefixIcon: Icon(Icons.search),
+                    hintText: '방제, 방 이름, 서버 검색',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('참여한 방', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                StreamBuilder<List<BossRoom>>(
+                  stream: service.myRooms(),
+                  builder: (context, snapshot) {
+                    final rooms = _filterRooms(snapshot.data ?? const []);
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (rooms.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text('아직 참여한 방이 없습니다.'),
+                      );
+                    }
+                    return Column(
+                      children: rooms
+                          .map((room) => _RoomTile(
+                                room: room,
+                                joined: true,
+                                onTap: () => _openRoom(context, room),
+                              ))
+                          .toList(),
+                    );
+                  },
+                ),
+                const SizedBox(height: 24),
+                Text('전체 방', style: Theme.of(context).textTheme.titleSmall),
+                const SizedBox(height: 8),
+                StreamBuilder<List<BossRoom>>(
+                  stream: service.rooms(),
+                  builder: (context, snapshot) {
+                    final rooms = _filterRooms(snapshot.data ?? const []);
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    if (rooms.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        child: Text('생성된 방이 없습니다.'),
+                      );
+                    }
+                    return Column(
+                      children: rooms
+                          .map((room) => _RoomTile(
+                                room: room,
+                                joined: false,
+                                onTap: () => _join(context, room),
+                              ))
+                          .toList(),
+                    );
+                  },
+                ),
+              ],
             ),
-            const SizedBox(height: 12),
-            Text('참여한 방', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            StreamBuilder<List<BossRoom>>(
-              stream: service.myRooms(),
-              builder: (context, snapshot) {
-                final rooms = snapshot.data ?? const [];
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (rooms.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text('아직 참여한 방이 없습니다.'),
-                  );
-                }
-                return Column(
-                  children: rooms
-                      .map((room) => _RoomTile(
-                            room: room,
-                            joined: true,
-                            onTap: () => _openRoom(context, room),
-                          ))
-                      .toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            Text('전체 방', style: Theme.of(context).textTheme.titleSmall),
-            const SizedBox(height: 8),
-            StreamBuilder<List<BossRoom>>(
-              stream: service.rooms(),
-              builder: (context, snapshot) {
-                final rooms = snapshot.data ?? const [];
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                if (rooms.isEmpty) {
-                  return const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    child: Text('생성된 방이 없습니다.'),
-                  );
-                }
-                return Column(
-                  children: rooms
-                      .map((room) => _RoomTile(
-                            room: room,
-                            joined: false,
-                            onTap: () => _join(context, room),
-                          ))
-                      .toList(),
-                );
-              },
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -151,8 +208,10 @@ class _RoomTile extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: Icon(room.hasPassword ? Icons.lock : Icons.meeting_room),
-        title: Text(room.name),
-        subtitle: Text(room.serverLabel),
+        title: Text(room.displayTitle),
+        subtitle: Text(room.displayTitle == room.name
+            ? room.serverLabel
+            : '${room.name} · ${room.serverLabel}'),
         trailing: Text(joined ? '입장' : '참여'),
         onTap: onTap,
       ),
@@ -171,6 +230,7 @@ class _CreateRoomDialog extends StatefulWidget {
 
 class _CreateRoomDialogState extends State<_CreateRoomDialog> {
   final name = TextEditingController();
+  final title = TextEditingController();
   final password = TextEditingController();
   GameWorld world = gameWorlds.first;
   int serverNo = 1;
@@ -180,6 +240,7 @@ class _CreateRoomDialogState extends State<_CreateRoomDialog> {
   @override
   void dispose() {
     name.dispose();
+    title.dispose();
     password.dispose();
     super.dispose();
   }
@@ -192,6 +253,7 @@ class _CreateRoomDialogState extends State<_CreateRoomDialog> {
     try {
       final room = await widget.service.createRoom(
         name: name.text,
+        title: title.text,
         server: GameServer(world: world, number: serverNo),
         password: password.text,
       );
@@ -214,6 +276,15 @@ class _CreateRoomDialogState extends State<_CreateRoomDialog> {
             TextField(
               controller: name,
               decoration: const InputDecoration(labelText: '방 이름'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: title,
+              maxLength: 60,
+              decoration: const InputDecoration(
+                labelText: '방제',
+                helperText: '방 리스트와 검색에 표시됩니다. 비워두면 방 이름을 사용합니다.',
+              ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<GameWorld>(
@@ -240,8 +311,9 @@ class _CreateRoomDialogState extends State<_CreateRoomDialog> {
                     child: Text('${n.toString().padLeft(2, '0')} 서버'),
                   ),
               ],
-              onChanged:
-                  busy ? null : (value) => setState(() => serverNo = value ?? 1),
+              onChanged: busy
+                  ? null
+                  : (value) => setState(() => serverNo = value ?? 1),
             ),
             const SizedBox(height: 12),
             TextField(
