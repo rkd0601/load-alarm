@@ -197,8 +197,7 @@ service cloud.firestore {
       }
 
       match /bossSchedules/{bossId} {
-        allow read: if request.auth != null
-          && exists(/databases/$(database)/documents/rooms/$(roomId)/members/$(request.auth.uid));
+        allow read: if request.auth != null;
         allow create: if signedIn()
           && getAfter(/databases/$(database)/documents/rooms/$(roomId)).data.ownerUid == request.auth.uid
           && request.resource.data.keys().hasAll([
