@@ -144,7 +144,7 @@ service cloud.firestore {
       }
 
       match /members/{userId} {
-        allow read: if isRoomMember(roomId);
+        allow read: if isRoomMember(roomId) || (signedIn() && request.auth.uid == userId);
         allow create: if signedIn()
           && request.auth.uid == userId
           && request.resource.data.keys().hasOnly([
