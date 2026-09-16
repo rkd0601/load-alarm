@@ -101,7 +101,6 @@ class RoomService {
 
   Future<BossRoom> createRoom({
     required String name,
-    required String title,
     required GameServer server,
     required String password,
   }) async {
@@ -109,9 +108,8 @@ class RoomService {
     final user = _auth.currentUser;
     if (user == null) throw StateError('로그인이 필요합니다.');
     final trimmedName = name.trim();
-    final trimmedTitle = title.trim().isEmpty ? trimmedName : title.trim();
     if (trimmedName.isEmpty) throw StateError('방 이름을 입력해 주세요.');
-    if (trimmedTitle.length > 60) throw StateError('방제는 60자 이하로 입력해 주세요.');
+    if (trimmedName.length > 40) throw StateError('방 이름은 40자 이하로 입력해 주세요.');
     final owned = await _db
         .collection('rooms')
         .where('ownerUid', isEqualTo: user.uid)
@@ -127,7 +125,6 @@ class RoomService {
     final batch = _db.batch();
     batch.set(room, {
       'name': trimmedName,
-      'title': trimmedTitle,
       'world': server.world.id,
       'worldName': server.world.name,
       'serverNo': server.number,
@@ -137,6 +134,13 @@ class RoomService {
       'createdAt': now,
       'updatedAt': now,
     });
+    if (hasPassword) {
+      batch.set(room.collection('secrets').doc('password'), {
+        'password': password.trim(),
+        'updatedAt': now,
+        'updatedBy': user.uid,
+      });
+    }
     batch.set(room.collection('members').doc(user.uid), {
       'uid': user.uid,
       'displayName': user.displayName ?? user.email ?? '사용자',
@@ -171,7 +175,6 @@ class RoomService {
     return BossRoom(
       id: room.id,
       name: trimmedName,
-      title: trimmedTitle,
       world: server.world.id,
       worldName: server.world.name,
       serverNo: server.number,
@@ -191,24 +194,31 @@ class RoomService {
         data['passwordHash'] != _passwordHash(room.id, password)) {
       throw StateError('방 비밀번호가 맞지 않습니다.');
     }
-    final existingSettings = await snapshot.reference
-        .collection('memberSettings')
-        .doc(user.uid)
-        .get();
+    final memberRef = snapshot.reference.collection('members').doc(user.uid);
+    final settingsRef =
+        snapshot.reference.collection('memberSettings').doc(user.uid);
+    final reads = await Future.wait([memberRef.get(), settingsRef.get()]);
+    final existingMember = reads[0];
+    final existingSettings = reads[1];
     final batch = _db.batch();
-    batch.set(
-        snapshot.reference.collection('members').doc(user.uid),
-        {
-          'uid': user.uid,
-          'displayName': user.displayName ?? user.email ?? '사용자',
-          'role': data['ownerUid'] == user.uid ? 'owner' : 'member',
-          'pushEnabled': true,
-          'joinedAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true));
+    if (existingMember.exists) {
+      batch.update(memberRef, {
+        'displayName': user.displayName ?? user.email ?? '사용자',
+        'pushEnabled': true,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } else {
+      batch.set(memberRef, {
+        'uid': user.uid,
+        'displayName': user.displayName ?? user.email ?? '사용자',
+        'role': data['ownerUid'] == user.uid ? 'owner' : 'member',
+        'pushEnabled': true,
+        'joinedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    }
     if (!existingSettings.exists) {
-      batch.set(snapshot.reference.collection('memberSettings').doc(user.uid), {
+      batch.set(settingsRef, {
         'uid': user.uid,
         'enabledBosses': {},
         'quietEnabled': false,
@@ -218,6 +228,20 @@ class RoomService {
       });
     }
     await batch.commit();
+  }
+
+  Future<String?> roomPassword(String roomId) async {
+    await connect();
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('로그인이 필요합니다.');
+    final doc = await _db
+        .collection('rooms')
+        .doc(roomId)
+        .collection('secrets')
+        .doc('password')
+        .get();
+    final value = doc.data()?['password'];
+    return value is String && value.isNotEmpty ? value : null;
   }
 
   Stream<RoomMember?> myMember(String roomId) {

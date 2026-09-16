@@ -37,6 +37,18 @@ class RoomHomePage extends StatelessWidget {
                 ],
               ),
               actions: [
+                if (isOwner && room.hasPassword)
+                  IconButton(
+                    tooltip: '방 비밀번호 확인',
+                    icon: const Icon(Icons.vpn_key),
+                    onPressed: () => showDialog<void>(
+                      context: context,
+                      builder: (_) => _RoomPasswordDialog(
+                        room: room,
+                        service: service,
+                      ),
+                    ),
+                  ),
                 if (isOwner)
                   IconButton(
                     tooltip: '방 권한 관리',
@@ -72,6 +84,68 @@ class RoomHomePage extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _RoomPasswordDialog extends StatefulWidget {
+  const _RoomPasswordDialog({required this.room, required this.service});
+
+  final BossRoom room;
+  final RoomService service;
+
+  @override
+  State<_RoomPasswordDialog> createState() => _RoomPasswordDialogState();
+}
+
+class _RoomPasswordDialogState extends State<_RoomPasswordDialog> {
+  late final Future<String?> password =
+      widget.service.roomPassword(widget.room.id);
+  bool visible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('방 비밀번호'),
+      content: FutureBuilder<String?>(
+        future: password,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              height: 72,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          if (snapshot.hasError) {
+            return Text('비밀번호를 불러오지 못했습니다.\n${snapshot.error}');
+          }
+          final value = snapshot.data;
+          if (value == null || value.isEmpty) {
+            return const Text('기존 방은 비밀번호 원문이 저장되어 있지 않아 확인할 수 없습니다.');
+          }
+          return Row(
+            children: [
+              Expanded(
+                child: SelectableText(
+                  visible ? value : '•' * value.length,
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ),
+              IconButton(
+                tooltip: visible ? '숨기기' : '보기',
+                icon: Icon(visible ? Icons.visibility_off : Icons.visibility),
+                onPressed: () => setState(() => visible = !visible),
+              ),
+            ],
+          );
+        },
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('닫기'),
+        ),
+      ],
     );
   }
 }

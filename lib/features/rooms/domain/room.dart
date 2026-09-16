@@ -2,7 +2,6 @@ class BossRoom {
   const BossRoom({
     required this.id,
     required this.name,
-    required this.title,
     required this.world,
     required this.worldName,
     required this.serverNo,
@@ -12,21 +11,17 @@ class BossRoom {
 
   final String id;
   final String name;
-  final String title;
   final String world;
   final String worldName;
   final int serverNo;
   final String ownerUid;
   final bool hasPassword;
 
-  String get displayTitle => title.trim().isEmpty ? name : title;
-
   String get serverLabel => '$worldName ${serverNo.toString().padLeft(2, '0')}';
 
   factory BossRoom.fromJson(String id, Map<String, dynamic> json) => BossRoom(
         id: id,
         name: json['name'] as String? ?? '',
-        title: json['title'] as String? ?? json['name'] as String? ?? '',
         world: json['world'] as String? ?? '',
         worldName: json['worldName'] as String? ?? '',
         serverNo: json['serverNo'] as int? ?? 0,

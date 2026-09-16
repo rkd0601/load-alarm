@@ -60,8 +60,7 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
     final keyword = search.trim();
     if (keyword.isEmpty) return rooms;
     return rooms
-        .where((room) => '${room.displayTitle} ${room.name} ${room.serverLabel}'
-            .contains(keyword))
+        .where((room) => '${room.name} ${room.serverLabel}'.contains(keyword))
         .toList();
   }
 
@@ -125,7 +124,7 @@ class _RoomLobbyPageState extends State<RoomLobbyPage> {
                   decoration: const InputDecoration(
                     isDense: true,
                     prefixIcon: Icon(Icons.search),
-                    hintText: '방제, 방 이름, 서버 검색',
+                    hintText: '방 이름 또는 서버 검색',
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -208,10 +207,8 @@ class _RoomTile extends StatelessWidget {
     return Card(
       child: ListTile(
         leading: Icon(room.hasPassword ? Icons.lock : Icons.meeting_room),
-        title: Text(room.displayTitle),
-        subtitle: Text(room.displayTitle == room.name
-            ? room.serverLabel
-            : '${room.name} · ${room.serverLabel}'),
+        title: Text(room.name),
+        subtitle: Text(room.serverLabel),
         trailing: Text(joined ? '입장' : '참여'),
         onTap: onTap,
       ),
@@ -230,7 +227,6 @@ class _CreateRoomDialog extends StatefulWidget {
 
 class _CreateRoomDialogState extends State<_CreateRoomDialog> {
   final name = TextEditingController();
-  final title = TextEditingController();
   final password = TextEditingController();
   GameWorld world = gameWorlds.first;
   int serverNo = 1;
@@ -240,7 +236,6 @@ class _CreateRoomDialogState extends State<_CreateRoomDialog> {
   @override
   void dispose() {
     name.dispose();
-    title.dispose();
     password.dispose();
     super.dispose();
   }
@@ -253,7 +248,6 @@ class _CreateRoomDialogState extends State<_CreateRoomDialog> {
     try {
       final room = await widget.service.createRoom(
         name: name.text,
-        title: title.text,
         server: GameServer(world: world, number: serverNo),
         password: password.text,
       );
@@ -276,15 +270,6 @@ class _CreateRoomDialogState extends State<_CreateRoomDialog> {
             TextField(
               controller: name,
               decoration: const InputDecoration(labelText: '방 이름'),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: title,
-              maxLength: 60,
-              decoration: const InputDecoration(
-                labelText: '방제',
-                helperText: '방 리스트와 검색에 표시됩니다. 비워두면 방 이름을 사용합니다.',
-              ),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<GameWorld>(
