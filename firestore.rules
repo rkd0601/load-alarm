@@ -165,7 +165,9 @@ service cloud.firestore {
           && request.resource.data.updatedAt == request.time
           && (
             (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys()
-              .hasOnly(['displayName', 'pushEnabled', 'updatedAt'])) ||
+              .hasOnly(['displayName', 'pushEnabled', 'updatedAt'])
+              && request.resource.data.role == resource.data.role
+              && request.resource.data.joinedAt == resource.data.joinedAt) ||
             (isRoomOwner(roomId) && request.resource.data.role in ['member', 'editor', 'owner'])
           );
         allow delete: if signedIn() && request.auth.uid == userId;

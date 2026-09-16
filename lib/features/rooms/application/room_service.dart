@@ -334,7 +334,11 @@ class RoomService {
     var hash = 0x811c9dc5;
     for (final byte in bytes) {
       hash ^= byte;
-      hash = (hash * 0x01000193) & 0xffffffff;
+      final low = hash & 0xffff;
+      final high = (hash >> 16) & 0xffff;
+      hash = ((low * 0x0193) +
+              ((high * 0x0193 + low * 0x0100) << 16)) &
+          0xffffffff;
     }
     return hash.toRadixString(16).padLeft(8, '0');
   }
